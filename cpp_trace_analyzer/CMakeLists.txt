@@ -3,4 +3,4 @@ project(cpp_trace_analyzer)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(cpp_trace_analyzer main.cpp)
+add_executable(cpp_trace_analyzer main.cpp private_cache.cpp)
