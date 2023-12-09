@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cmath>
 #include <bitset>
 #include <utility>
 #include "llc_partitioning.hpp"
