@@ -1,10 +1,14 @@
+#include "cache.hpp"
+#include <cassert>
 #include <cmath>
 #include <iostream>
-#include "cache.hpp"
 
 Cache::Cache(uint64_t cache_size, uint32_t assoc, uint32_t block_size, uint32_t tag_size)
-        : cache_size_(cache_size), sets_(compute_sets(assoc)), block_size_(block_size),
-          tag_size_(tag_size), misses_(0), hits_(0) {}
+        : cache_size_(cache_size), block_size_(block_size),
+          tag_size_(tag_size), misses_(0), hits_(0) {
+    sets_ = compute_sets(assoc);
+    cache_.resize(sets_, CacheSet(assoc));
+}
 
 uint64_t Cache::cache_size() const noexcept {
     return cache_size_;
@@ -119,6 +123,7 @@ LocationInfo Cache::compute_location_info(uintptr_t addr) const noexcept {
 
 void Cache::access(const LocationInfo& loc, bool write) {
     try {
+        assert(loc.set_index < sets());
         auto &set = cache_[loc.set_index];
         int32_t way = -1;
         for (size_t i = 0; i < set.associativity(); i++) {

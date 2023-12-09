@@ -65,3 +65,7 @@ private:
     std::vector<std::pair<uint32_t, uint32_t>> stats;
 };
 
+// Cluster partitioning
+class ClusterPartitioning {
+    // TODO(kostas): FILLME.
+};

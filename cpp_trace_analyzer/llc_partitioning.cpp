@@ -80,14 +80,19 @@ const std::vector<Cache> &InterNodePartitioning::memory_nodes(uint32_t client_id
     return memory_nodes_[client_id];
 }
 
+static uint32_t bits_to_represent(uint32_t n)
+{
+    return n > 0 ? 1 + bits_to_represent(n/2) : 0;
+}
+
 void InterNodePartitioning::access(uint32_t client_id, uintptr_t addr, bool write) {
     // Find the LLC slices that belong to that ID.
     assert(client_id < memory_nodes_.size());
     auto& memory_node = memory_nodes_[client_id];
 
     // TODO(kostas). FIXME.
-    uint32_t page_offset_bits = 4;
-    uint32_t node_selection_bits = 2;
+    auto page_offset_bits = (uint32_t) std::log2(memory_node[0].block_size());
+    uint32_t node_selection_bits = bits_to_represent(memory_nodes_.size());
 
     auto node_selection = static_cast<uint32_t>((addr >> page_offset_bits) & Cache::mask(node_selection_bits));
     auto& slice = memory_node[node_selection % memory_node.size()];
