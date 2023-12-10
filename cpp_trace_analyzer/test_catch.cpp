@@ -8,34 +8,29 @@
 using namespace std;
 
 TEST_CASE("Correct initialization", "cache") {
-    Cache pc = Cache(64, 2, 8, 8);
+    Cache pc = Cache(64, 2, 8);
 
     REQUIRE(pc.cache_size() == 64);
     REQUIRE(pc.block_size() == 8);
-    REQUIRE(pc.tag_size() == 8);
 }
 
 TEST_CASE("Correct number of sets", "cache") {
-    Cache pc = Cache(1024, 2, 8, 8);
+    Cache pc = Cache(1024, 2, 8);
 
-    //1024 / ((8 + 8) * 2) = 64
-    REQUIRE(pc.sets() == 32);
+    //1024 / (8 * 2) = 64
+    REQUIRE(pc.sets() == 64);
 
-    Cache pc2 = Cache(320, 1, 16, 4);
+    Cache pc2 = Cache(320, 1, 16);
 
-    REQUIRE(pc2.sets() == 16);
-
-    Cache pc3 = Cache(176, 2, 16, 6);
-
-    REQUIRE(pc3.sets() == 4);
+    REQUIRE(pc2.sets() == 20);
 }
 
 TEST_CASE("Valid args", "cache") {
     //Cache not big enough
-    REQUIRE_THROWS(Cache(1024, 16, 64, 8));
+    REQUIRE_THROWS(Cache(1024, 16, 128));
 
     //Invalid number of rows
-    REQUIRE_THROWS(Cache(1023, 2, 8, 8));
+    REQUIRE_THROWS(Cache(176, 2, 16));
 }
 
 static uint32_t createMask(uint8_t i, uint8_t j) {
@@ -49,11 +44,11 @@ static uint32_t createMask(uint8_t i, uint8_t j) {
 //Accessing an address should be a miss the first time, and a hit on the second one
 // (after being fetched from main memory)
 TEST_CASE("Basic accesses work", "cache") {
-    Cache pc = Cache(1024, 2, 8, 8);
+    Cache pc = Cache(8192, 2, 8);
 
-    //We should have log2(64)=6 bits for set index, 3 for offset and 8 for tag size for a total size of 17 bits addresses
+    //We should have log2(64)=6 bits for set index, 3 for offset
 
-    //Tag=1, index = 16, off = 0
+    //Tag=1, index = 32, off = 0
     uint32_t first_access = 3 << 8;
 
     REQUIRE(pc.misses() == 0);
@@ -72,7 +67,7 @@ TEST_CASE("Basic accesses work", "cache") {
 }
 
 TEST_CASE("Offsets work", "cache") {
-    Cache pc = Cache(176, 2, 16, 6);
+    Cache pc = Cache(512, 2, 128);
 
     //Only block offset changes
     uint32_t first_access = (~0) << 4;
@@ -88,7 +83,9 @@ TEST_CASE("Offsets work", "cache") {
 
 //A cache with multiple ways should be able to store two blocks simultaneously
 TEST_CASE("Assoc works", "cache") {
-    Cache pc = Cache(176, 2, 16, 6);
+    Cache pc = Cache(1024, 2, 128);
+
+    //4 sets
 
     //Same index, different tags here
     uint32_t first_access = 3 << 4; //tag = 0
@@ -112,7 +109,9 @@ TEST_CASE("Assoc works", "cache") {
 
 //A cache with multiple ways should be able to store two blocks simultaneously
 TEST_CASE("LRU policy works", "cache") {
-    Cache pc = Cache(88, 1, 16, 6);
+    Cache pc = Cache(512, 1, 128);
+
+    //4 sets
 
     //Same index, different tags here
     uint32_t first_access = 3 << 4; //tag = 0
@@ -138,7 +137,9 @@ TEST_CASE("LRU policy works", "cache") {
 
     REQUIRE(pc.hits() == 0);
 
-    Cache pc2 = Cache(176, 2, 16, 6);
+    Cache pc2 = Cache(1024, 2, 128);
+
+    //4 sets
 
     pc2.read(first_access);
     pc2.read(second_access);
@@ -169,14 +170,16 @@ TEST_CASE("Way partitioning valid input", "Way partitioning") {
     vector<uint32_t> partition{1, 2, 1};
 
     //Not big enough cache
-    REQUIRE_THROWS(WayPartitioning(partition, 66, 16, 6));
+    REQUIRE_THROWS(WayPartitioning(partition, 32, 16));
 }
 
 TEST_CASE("Way partitioning", "Way partitioning") {
     //Three clients, unequal partitions. This is the situation depicted on the stage 2 report (modulo the clients)
     vector<uint32_t> partition{1, 2, 1};
 
-    WayPartitioning wp = WayPartitioning(partition, 352, 16, 6);
+    WayPartitioning wp = WayPartitioning(partition, 2048, 128);
+
+    //4 sets
 
     for (int i = 0; i < 3; ++i) {
         REQUIRE(wp.misses(i) == 0);
@@ -257,7 +260,7 @@ TEST_CASE("Intra node valid args", "Intra node partitioning") {
     };
 
     //Not correct number of clients
-    REQUIRE_THROWS(IntraNodePartitioning(3, 352, 4, 16, 6, aux_table));
+    REQUIRE_THROWS(IntraNodePartitioning(3, 2048, 4, 128, aux_table));
 
     vector<fixed_bits_t> aux_table2{
             fixed_bits_t{bitset<32>{0x0}, 2},
@@ -266,7 +269,7 @@ TEST_CASE("Intra node valid args", "Intra node partitioning") {
     };
 
     //Not valid distribution of aux_table
-    REQUIRE_THROWS(IntraNodePartitioning(3, 352, 4, 16, 6, aux_table2));
+    REQUIRE_THROWS(IntraNodePartitioning(3, 2048, 4, 128, aux_table2));
 
     vector<fixed_bits_t> aux_table3{
             fixed_bits_t{bitset<32>{0x0}, 0},
@@ -275,7 +278,7 @@ TEST_CASE("Intra node valid args", "Intra node partitioning") {
     };
 
     //Not valid distribution of aux_table
-    REQUIRE_THROWS(IntraNodePartitioning(3, 352, 4, 16, 6, aux_table3));
+    REQUIRE_THROWS(IntraNodePartitioning(3, 2048, 4, 128, aux_table3));
 
     vector<fixed_bits_t> aux_table4{
             fixed_bits_t{bitset<32>{0x0}, 1},
@@ -284,7 +287,7 @@ TEST_CASE("Intra node valid args", "Intra node partitioning") {
     };
 
     //Not valid distribution of aux_table
-    REQUIRE_THROWS(IntraNodePartitioning(3, 352, 4, 16, 6, aux_table4));
+    REQUIRE_THROWS(IntraNodePartitioning(3, 2048, 4, 128, aux_table4));
 }
 
 TEST_CASE("Intra node partitioning", "Intra node partitioning") {
@@ -295,7 +298,9 @@ TEST_CASE("Intra node partitioning", "Intra node partitioning") {
             fixed_bits_t{bitset<32>{0x3}, 2},
     };//Three clients, unequal partitions
 
-    IntraNodePartitioning inp = IntraNodePartitioning(3, 352, 4, 16, 6, aux_table);
+    IntraNodePartitioning inp = IntraNodePartitioning(3, 2048, 4, 128, aux_table);
+
+    //4 sets
 
     for (int i = 0; i < 3; ++i) {
         REQUIRE(inp.misses(i) == 0);
@@ -403,22 +408,20 @@ TEST_CASE("Inter node partitioning input", "Inter node partitioning") {
     vector<uint32_t> part = {2, 1, 1};
 
     //Not proper number of clients
-    REQUIRE_THROWS(InterNodePartitioning(2, part, 48, 2, 16, 8));
-    REQUIRE_THROWS(InterNodePartitioning(4, part, 48, 2, 16, 8));
+    REQUIRE_THROWS(InterNodePartitioning(2, part, 1024, 2, 16));
+    REQUIRE_THROWS(InterNodePartitioning(4, part, 1024, 2, 16));
 
     //Invalid cache size (rows cannot be properly divided)
-    REQUIRE_THROWS(InterNodePartitioning(3, part, 44, 2, 16, 8));
+    REQUIRE_THROWS(InterNodePartitioning(3, part, 1023, 2, 16));
 
-    InterNodePartitioning inp = InterNodePartitioning(3, part, 48, 2, 16, 8);
+    InterNodePartitioning inp = InterNodePartitioning(3, part, 1024, 2, 16);
 
-    //Two bits from the tag are used in the node selection (since we may have at most 4 nodes for the same client) but
-    // still have to be added to the tag, since we are doing a modulo operation
-    REQUIRE(inp.memory_nodes(0)[0].tag_size() == 8);
-    REQUIRE(inp.memory_nodes(0)[0].tag_size() == 8);
+    REQUIRE(inp.memory_nodes(0)[0].sets() == 4);
+    REQUIRE(inp.memory_nodes(0)[0].sets() == 4);
 
-    REQUIRE(inp.memory_nodes(1)[0].tag_size() == 8);
+    REQUIRE(inp.memory_nodes(1)[0].sets() == 4);
 
-    REQUIRE(inp.memory_nodes(2)[0].tag_size() == 8);
+    REQUIRE(inp.memory_nodes(2)[0].sets() == 4);
 }
 
 TEST_CASE("Inter node partitioning", "Inter node partitioning") {
@@ -427,7 +430,7 @@ TEST_CASE("Inter node partitioning", "Inter node partitioning") {
 
     //Each slice has a single set of associativity 2. No need for more complex slices since they are already checked
     // in previous tests! We are only interested in how accesses are divided between nodes here.
-    InterNodePartitioning inp = InterNodePartitioning(3, part, 48, 2, 16, 8);
+    InterNodePartitioning inp = InterNodePartitioning(3, part, 256, 2, 128);
 
     //For this test, since we do not know the page size, I am assuming that the node selection bits are taken
     // from just after the block offset bits
