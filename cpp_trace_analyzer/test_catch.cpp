@@ -8,24 +8,24 @@
 using namespace std;
 
 TEST_CASE("Correct initialization", "cache") {
-    Cache pc = Cache(64, 2, 8, 8);
+    Cache pc = Cache(64, 2, 8);
 
     REQUIRE(pc.cache_size() == 64);
     REQUIRE(pc.block_size() == 8);
-    REQUIRE(pc.tag_size() == 8);
+    REQUIRE(pc.sets() == 4);
 }
 
 TEST_CASE("Correct number of sets", "cache") {
-    Cache pc = Cache(1024, 2, 8, 8);
+    Cache pc = Cache(1024, 2, 8);
 
     //1024 / ((8 + 8) * 2) = 64
     REQUIRE(pc.sets() == 32);
 
-    Cache pc2 = Cache(320, 1, 16, 4);
+    Cache pc2 = Cache(320, 1, 16);
 
     REQUIRE(pc2.sets() == 16);
 
-    Cache pc3 = Cache(176, 2, 16, 6);
+    Cache pc3 = Cache(176, 2, 16);
 
     REQUIRE(pc3.sets() == 4);
 }
