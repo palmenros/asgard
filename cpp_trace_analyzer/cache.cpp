@@ -3,11 +3,15 @@
 #include <cmath>
 #include <iostream>
 
-Cache::Cache(uint64_t cache_size, uint32_t assoc, uint32_t block_size, uint32_t tag_size)
-        : cache_size_(cache_size), block_size_(block_size),
-          tag_size_(tag_size), misses_(0), hits_(0) {
-    sets_ = compute_sets(assoc);
-    cache_.resize(sets_, CacheSet(assoc));
+Cache::Cache(uint64_t cache_size, uint32_t assoc, uint32_t block_size)
+        : cache_size_(cache_size), block_size_(block_size), misses_(0), hits_(0) {
+
+    cache_.resize(compute_sets(assoc), CacheSet(assoc));
+
+    auto block_bits = (uint32_t) std::log2(block_size);
+    auto set_bits = (uint32_t) std::log2(cache_.size());
+
+    tag_bits_ = 64 - set_bits - block_bits;
 }
 
 uint64_t Cache::cache_size() const noexcept {
@@ -15,15 +19,15 @@ uint64_t Cache::cache_size() const noexcept {
 }
 
 uint32_t Cache::sets() const noexcept {
-    return sets_;
+    return cache_.size();
 }
 
 uint32_t Cache::block_size() const noexcept {
     return block_size_;
 }
 
-uint32_t Cache::tag_size() const noexcept {
-    return tag_size_;
+uint32_t Cache::tag_bits() const noexcept {
+    return tag_bits_;
 }
 
 uint32_t Cache::misses() const noexcept {
@@ -43,7 +47,7 @@ void Cache::update_misses() noexcept {
 }
 
 uint32_t Cache::compute_sets(uint32_t assoc) const noexcept {
-    uint32_t cache_lines = cache_size_ / ((uint64_t) block_size_ + (uint64_t) tag_size_);
+    uint32_t cache_lines = cache_size() / ((uint64_t) block_size());
     return cache_lines / assoc;
 }
 
@@ -113,11 +117,10 @@ void Cache::write(uintptr_t addr) {
 LocationInfo Cache::compute_location_info(uintptr_t addr) const noexcept {
     auto block_bits = (uint32_t) std::log2(block_size());
     auto set_bits = (uint32_t) std::log2(sets());
-    auto tag_bits = (uint32_t) std::log2(tag_size());
 
     return {
         .set_index = static_cast<uint32_t>((addr >> block_bits) & mask(set_bits)),
-        .tag = static_cast<uint32_t>((addr >> (block_bits + set_bits)) & mask(tag_bits))
+        .tag = static_cast<uint32_t>((addr >> (block_bits + set_bits)) & mask(tag_bits()))
     };
 }
 

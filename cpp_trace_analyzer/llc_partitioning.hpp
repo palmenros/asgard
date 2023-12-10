@@ -8,8 +8,7 @@
 // Way partitioning.
 class WayPartitioning {
 public:
-    WayPartitioning(const std::vector<uint32_t>& n_ways, uint64_t slice_size,
-                    uint32_t block_size, uint32_t tag_size);
+    WayPartitioning(const std::vector<uint32_t>& n_ways, uint64_t slice_size, uint32_t block_size);
 
     void read(uint32_t client_id, uintptr_t addr) noexcept;
     void write(uint32_t client_id, uintptr_t addr) noexcept;
@@ -26,7 +25,7 @@ public:
     // n_slices is how many slices each client has.
     // the rest are information for LLC slice.
     InterNodePartitioning(uint32_t clients, const std::vector<uint32_t>& n_slices,
-                          uint64_t slice_size, uint32_t assoc, uint32_t block_size, uint32_t tag_size);
+                          uint64_t slice_size, uint32_t assoc, uint32_t block_size);
 
 
     void read(uint32_t client_id, uintptr_t addr);
@@ -50,8 +49,7 @@ struct fixed_bits_t {
 class IntraNodePartitioning {
 public:
     IntraNodePartitioning(uint32_t clients, uint64_t cache_size, uint32_t assoc,
-                          uint32_t block_size, uint32_t tag_size,
-                          std::vector<fixed_bits_t> aux_table);
+                          uint32_t block_size, std::vector<fixed_bits_t> aux_table);
 
     void read(uint32_t client_id, uintptr_t addr) noexcept;
     void write(uint32_t client_id, uintptr_t addr) noexcept;

@@ -4,11 +4,9 @@
 #include <utility>
 #include "llc_partitioning.hpp"
 
-WayPartitioning::WayPartitioning(const std::vector<uint32_t> &n_ways,
-                                 uint64_t slice_size, uint32_t block_size,
-                                 uint32_t tag_size) {
+WayPartitioning::WayPartitioning(const std::vector<uint32_t> &n_ways, uint64_t slice_size, uint32_t block_size) {
     for (const auto& n_way: n_ways) {
-        way_partitioned_caches_.emplace_back(slice_size, n_way, block_size, tag_size);
+        way_partitioned_caches_.emplace_back(slice_size, n_way, block_size);
     }
 }
 
@@ -29,11 +27,10 @@ uint32_t WayPartitioning::hits(uint32_t client_id) const noexcept {
 }
 
 InterNodePartitioning::InterNodePartitioning(uint32_t clients, const std::vector<uint32_t>& n_slices,
-                                             uint64_t slice_size, uint32_t assoc, uint32_t block_size,
-                                             uint32_t tag_size) {
+                                             uint64_t slice_size, uint32_t assoc, uint32_t block_size) {
     memory_nodes_.resize(clients);
     for (size_t i = 0; i < n_slices.size(); i++) {
-        std::vector<Cache> slices(n_slices[i], Cache(slice_size, assoc, block_size, tag_size));
+        std::vector<Cache> slices(n_slices[i], Cache(slice_size, assoc, block_size));
         memory_nodes_[i] = slices;
     }
 }
@@ -104,11 +101,9 @@ void InterNodePartitioning::access(uint32_t client_id, uintptr_t addr, bool writ
     }
 }
 
-IntraNodePartitioning::IntraNodePartitioning(uint32_t clients,
-                                             uint64_t cache_size, uint32_t assoc,
-                                             uint32_t block_size, uint32_t tag_size,
-                                             std::vector<fixed_bits_t>  aux_table)
-                                             : cache_(cache_size, assoc, block_size, tag_size),
+IntraNodePartitioning::IntraNodePartitioning(uint32_t clients, uint64_t cache_size, uint32_t assoc,
+                                             uint32_t block_size, std::vector<fixed_bits_t> aux_table)
+                                             : cache_(cache_size, assoc, block_size),
                                                aux_table_(std::move(aux_table)),
                                                stats(clients, {0, 0}) {}
 
@@ -134,11 +129,10 @@ void IntraNodePartitioning::access(uint32_t client_id, uintptr_t addr, bool writ
     }
 
     auto block_bits = (uint32_t) std::log2(cache_.block_size());
-    auto tag_bits = (uint32_t) std::log2(cache_.tag_size());
 
     LocationInfo loc {
-            .set_index = static_cast<uint32_t>((baddr.to_ulong() >> block_bits) & Cache::mask(set_bits)),
-            .tag = static_cast<uint32_t>((baddr.to_ulong() >> block_bits) & Cache::mask(tag_bits + set_bits))
+        .set_index = static_cast<uint32_t>((baddr.to_ulong() >> block_bits) & Cache::mask(set_bits)),
+        .tag = static_cast<uint32_t>((baddr.to_ulong() >> block_bits) & Cache::mask(cache_.tag_bits() + set_bits))
     };
 
     cache_.access(loc, write);

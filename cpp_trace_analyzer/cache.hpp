@@ -38,7 +38,7 @@ private:
 
 class Cache {
 public:
-    Cache(uint64_t cache_size, uint32_t assoc, uint32_t block_size, uint32_t tag_size);
+    Cache(uint64_t cache_size, uint32_t assoc, uint32_t block_size);
 
     // Creates a bitmask consisting of ones, of size `bits`.
     // For example, if bits == 2, returns 0b11.
@@ -56,15 +56,20 @@ public:
     uint64_t cache_size() const noexcept;
     uint32_t sets() const noexcept;
     uint32_t block_size() const noexcept;
-    uint32_t tag_size() const noexcept;
+    uint32_t tag_bits() const noexcept;
     uint32_t misses() const noexcept;
     uint32_t hits() const noexcept;
     void update_hits() noexcept;
     void update_misses() noexcept;
 private:
     std::vector<CacheSet> cache_;
+    // Actual size of the cache.
     uint64_t cache_size_;
-    uint32_t sets_, block_size_, tag_size_, misses_, hits_;
+    // Block bytes in bytes.
+    uint32_t block_size_;
+    // Tag bits.
+    uint32_t tag_bits_;
+    uint32_t misses_, hits_;
 
     uint32_t compute_sets(uint32_t assoc) const noexcept;
     LocationInfo compute_location_info(uintptr_t addr) const noexcept;
