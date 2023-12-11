@@ -288,6 +288,14 @@ TEST_CASE("Intra node valid args", "Intra node partitioning") {
 
     //Not valid distribution of aux_table
     REQUIRE_THROWS(IntraNodePartitioning(3, 256, 4, 16, aux_table4));
+
+    vector<fixed_bits_t> aux_table5{
+            fixed_bits_t{bitset<32>{0x0}, 1},
+            fixed_bits_t{bitset<32>{0x1}, 1}
+    };
+
+    //More clients than sets, set distribution impossible
+    REQUIRE_THROWS(IntraNodePartitioning(2, 64, 4, 16, aux_table5));
 }
 
 TEST_CASE("Intra node partitioning", "Intra node partitioning") {
