@@ -3,10 +3,22 @@
 #include <cmath>
 #include <iostream>
 
+static bool is_power2(uint64_t n) {
+    return (n != 0) && ((n & (n - 1)) == 0);
+}
+
 Cache::Cache(uint64_t cache_size, uint32_t assoc, uint32_t block_size)
         : cache_size_(cache_size), block_size_(block_size), misses_(0), hits_(0) {
 
+    if (!is_power2(cache_size) || !is_power2(block_size) || !is_power2(assoc)) {
+        throw std::invalid_argument("Cache size or block size or associativity are not power of 2!");
+    }
+
     cache_.resize(compute_sets(assoc), CacheSet(assoc));
+
+    if (cache_.empty() || (block_size * assoc > cache_size)) {
+        throw std::invalid_argument("Invalid cache size (not big enough)!");
+    }
 
     auto block_bits = (uint32_t) std::log2(block_size);
     auto set_bits = (uint32_t) std::log2(cache_.size());
@@ -46,9 +58,11 @@ void Cache::update_misses() noexcept {
     misses_++;
 }
 
-uint32_t Cache::compute_sets(uint32_t assoc) const noexcept {
-    uint32_t cache_lines = cache_size() / ((uint64_t) block_size());
-    return cache_lines / assoc;
+uint32_t Cache::compute_sets(uint32_t assoc) const {
+    if (cache_size() % (block_size() * assoc) != 0) {
+        throw std::invalid_argument("Block size * associativity should be a multiple of cache size!");
+    }
+    return cache_size() / ((uint64_t) block_size() * assoc);
 }
 
 CacheSet::CacheSet(uint32_t assoc) : assoc_(assoc), lru_stats_(assoc), cache_lines_(assoc) {
@@ -127,6 +141,9 @@ LocationInfo Cache::compute_location_info(uintptr_t addr) const noexcept {
 void Cache::access(const LocationInfo& loc, bool write) {
     try {
         assert(loc.set_index < sets());
+        if (loc.set_index >= sets()) {
+            throw std::exception();
+        }
         auto &set = cache_[loc.set_index];
         int32_t way = -1;
         for (size_t i = 0; i < set.associativity(); i++) {
@@ -150,9 +167,9 @@ void Cache::access(const LocationInfo& loc, bool write) {
             update_hits();
         }
 
-        if (write) {
-            cache_line.state = CacheLineState::DIRTY;
-        }
+//        if (write) {
+//            cache_line.state = CacheLineState::DIRTY;
+//        }
 
         set.update_lru(way, true);
     }

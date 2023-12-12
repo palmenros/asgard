@@ -2469,7 +2469,7 @@ namespace Catch {
 #if defined(CATCH_CONFIG_ENABLE_BENCHMARKING)
         virtual void benchmarkPreparing( std::string const& name ) = 0;
         virtual void benchmarkStarting( BenchmarkInfo const& info ) = 0;
-        virtual void benchmarkEnded( BenchmarkStats<> const& stats ) = 0;
+        virtual void benchmarkEnded( BenchmarkStats<> const& stats_ ) = 0;
         virtual void benchmarkFailed( std::string const& error ) = 0;
 #endif // CATCH_CONFIG_ENABLE_BENCHMARKING
 
@@ -6173,7 +6173,7 @@ namespace Catch {
 #if defined(CATCH_CONFIG_ENABLE_BENCHMARKING)
         void benchmarkPreparing(std::string const& name) override;
         void benchmarkStarting(BenchmarkInfo const& info) override;
-        void benchmarkEnded(BenchmarkStats<> const& stats) override;
+        void benchmarkEnded(BenchmarkStats<> const& stats_) override;
         void benchmarkFailed(std::string const& error) override;
 #endif // CATCH_CONFIG_ENABLE_BENCHMARKING
 
@@ -7341,8 +7341,8 @@ namespace Catch {
                     });
 
                     auto analysis = Detail::analyse(*cfg, env, samples.begin(), samples.end());
-                    BenchmarkStats<FloatDuration<Clock>> stats{ info, analysis.samples, analysis.mean, analysis.standard_deviation, analysis.outliers, analysis.outlier_variance };
-                    getResultCapture().benchmarkEnded(stats);
+                    BenchmarkStats<FloatDuration<Clock>> stats_{ info, analysis.samples, analysis.mean, analysis.standard_deviation, analysis.outliers, analysis.outlier_variance };
+                    getResultCapture().benchmarkEnded(stats_);
 
                 } CATCH_CATCH_ALL{
                     if (translateActiveException() != Detail::benchmarkErrorMsg) // benchmark errors have been reported, otherwise rethrow.
@@ -8110,7 +8110,7 @@ namespace Catch {
 #if defined(CATCH_CONFIG_ENABLE_BENCHMARKING)
         void benchmarkPreparing( std::string const& name ) override;
         void benchmarkStarting( BenchmarkInfo const& info ) override;
-        void benchmarkEnded( BenchmarkStats<> const& stats ) override;
+        void benchmarkEnded( BenchmarkStats<> const& stats_ ) override;
         void benchmarkFailed( std::string const& error ) override;
 #endif // CATCH_CONFIG_ENABLE_BENCHMARKING
 
@@ -12882,8 +12882,8 @@ namespace Catch {
     void RunContext::benchmarkStarting( BenchmarkInfo const& info ) {
         m_reporter->benchmarkStarting( info );
     }
-    void RunContext::benchmarkEnded( BenchmarkStats<> const& stats ) {
-        m_reporter->benchmarkEnded( stats );
+    void RunContext::benchmarkEnded( BenchmarkStats<> const& stats_ ) {
+        m_reporter->benchmarkEnded( stats_ );
     }
     void RunContext::benchmarkFailed(std::string const & error) {
         m_reporter->benchmarkFailed(error);
@@ -16549,20 +16549,20 @@ void ConsoleReporter::benchmarkStarting(BenchmarkInfo const& info) {
     if (!m_config->benchmarkNoAnalysis())
         (*m_tablePrinter) << Duration(info.estimatedDuration) << ColumnBreak();
 }
-void ConsoleReporter::benchmarkEnded(BenchmarkStats<> const& stats) {
+void ConsoleReporter::benchmarkEnded(BenchmarkStats<> const& stats_) {
     if (m_config->benchmarkNoAnalysis())
     {
-        (*m_tablePrinter) << Duration(stats.mean.point.count()) << ColumnBreak();
+        (*m_tablePrinter) << Duration(stats_.mean.point.count()) << ColumnBreak();
     }
     else
     {
         (*m_tablePrinter) << ColumnBreak()
-            << Duration(stats.mean.point.count()) << ColumnBreak()
-            << Duration(stats.mean.lower_bound.count()) << ColumnBreak()
-            << Duration(stats.mean.upper_bound.count()) << ColumnBreak() << ColumnBreak()
-            << Duration(stats.standardDeviation.point.count()) << ColumnBreak()
-            << Duration(stats.standardDeviation.lower_bound.count()) << ColumnBreak()
-            << Duration(stats.standardDeviation.upper_bound.count()) << ColumnBreak() << ColumnBreak() << ColumnBreak() << ColumnBreak() << ColumnBreak();
+            << Duration(stats_.mean.point.count()) << ColumnBreak()
+            << Duration(stats_.mean.lower_bound.count()) << ColumnBreak()
+            << Duration(stats_.mean.upper_bound.count()) << ColumnBreak() << ColumnBreak()
+            << Duration(stats_.standardDeviation.point.count()) << ColumnBreak()
+            << Duration(stats_.standardDeviation.lower_bound.count()) << ColumnBreak()
+            << Duration(stats_.standardDeviation.upper_bound.count()) << ColumnBreak() << ColumnBreak() << ColumnBreak() << ColumnBreak() << ColumnBreak();
     }
 }
 

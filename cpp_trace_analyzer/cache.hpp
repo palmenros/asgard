@@ -71,6 +71,6 @@ private:
     uint32_t tag_bits_;
     uint32_t misses_, hits_;
 
-    uint32_t compute_sets(uint32_t assoc) const noexcept;
+    uint32_t compute_sets(uint32_t assoc) const;
     LocationInfo compute_location_info(uintptr_t addr) const noexcept;
 };
