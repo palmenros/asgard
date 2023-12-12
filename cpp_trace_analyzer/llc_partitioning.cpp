@@ -2,6 +2,7 @@
 #include <cmath>
 #include <bitset>
 #include <utility>
+#include <iostream>
 #include "llc_partitioning.hpp"
 
 WayPartitioning::WayPartitioning(const std::vector<uint32_t> &n_ways, uint64_t slice_size, uint32_t block_size) {
@@ -160,15 +161,17 @@ void IntraNodePartitioning::access(uint32_t client_id, uintptr_t addr, bool writ
         baddr[i] = bits_info.bits[bits_info_idx++];
     }
 
-    auto tag_bits = 64 - block_offset_bits - (set_bits - bits_info.n_bits);
+    auto tag_bits = 64 - block_offset_bits;
     LocationInfo loc {
         .set_index = static_cast<uint32_t>((baddr.to_ulong() >> block_offset_bits) & Cache::mask(set_bits)),
-        .tag = static_cast<uint32_t>(addr >> (block_offset_bits - (set_bits - bits_info.n_bits))) & Cache::mask(tag_bits)
+        .tag = static_cast<uint64_t>(addr >> block_offset_bits) & Cache::mask(tag_bits)
     };
+
+    std::cout << "Accessed " << loc.set_index << " (tag) " << loc.tag << std::endl;
 
     auto& stats = stats_[client_id];
     uint32_t misses = cache_.misses();
-    cache_.access(loc, write);
+    cache_.access(loc, write, addr);
     if (cache_.misses() > misses) {
         stats.first++;
     } else {

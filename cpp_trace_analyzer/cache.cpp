@@ -119,12 +119,24 @@ CacheSet::CacheLine& CacheSet::cache_line(uint32_t assoc) {
     return cache_lines_[assoc];
 }
 
+bool Cache::exists(uintptr_t addr) {
+    for (auto& cache_set: cache_) {
+        for (size_t a = 0; a < cache_set.associativity(); a++) {
+            if (cache_set.cache_line(a).addr == addr) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 void Cache::read(uintptr_t addr) {
-    access(compute_location_info(addr), false);
+    access(compute_location_info(addr), false, addr);
 }
 
 void Cache::write(uintptr_t addr) {
-    access(compute_location_info(addr), false);
+    access(compute_location_info(addr), false, addr);
 }
 
 // Extracts location information from the address, using masking.
@@ -134,11 +146,11 @@ LocationInfo Cache::compute_location_info(uintptr_t addr) const noexcept {
 
     return {
         .set_index = static_cast<uint32_t>((addr >> block_bits) & mask(set_bits)),
-        .tag = static_cast<uint32_t>((addr >> (block_bits + set_bits)) & mask(tag_bits()))
+        .tag = static_cast<uint64_t>((addr >> (block_bits + set_bits)) & mask(tag_bits()))
     };
 }
 
-void Cache::access(const LocationInfo& loc, bool write) {
+void Cache::access(const LocationInfo& loc, bool write, uintptr_t addr) {
     try {
         assert(loc.set_index < sets());
         if (loc.set_index >= sets()) {
@@ -163,6 +175,7 @@ void Cache::access(const LocationInfo& loc, bool write) {
             update_misses();
             cache_line.state = CacheLineState::VALID;
             cache_line.tag = loc.tag;
+            cache_line.addr = addr;
         } else {
             update_hits();
         }

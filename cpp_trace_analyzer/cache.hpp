@@ -12,7 +12,7 @@ enum class CacheLineState {
 
 struct LocationInfo {
     uint32_t set_index;
-    uint32_t tag;
+    uint64_t tag;
 };
 
 class CacheSet {
@@ -22,8 +22,9 @@ public:
     struct CacheLine {
         CacheLineState state;
         uint32_t tag;
+        uint64_t addr; // For debug.
 
-        explicit CacheLine() : state(CacheLineState::INVALID), tag(0) {}
+        explicit CacheLine() : state(CacheLineState::INVALID), tag(0), addr(0) {}
     };
 
     uint32_t associativity() const noexcept;
@@ -50,9 +51,10 @@ public:
         return result;
     }
 
+    bool exists(uintptr_t addr);
     void read(uintptr_t addr);
     void write(uintptr_t addr);
-    void access(const LocationInfo& loc, bool write);
+    void access(const LocationInfo& loc, bool write, uintptr_t addr);
     uint64_t cache_size() const noexcept;
     uint32_t sets() const noexcept;
     uint32_t block_size() const noexcept;

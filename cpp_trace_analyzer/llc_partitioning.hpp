@@ -55,7 +55,7 @@ public:
     void write(uint32_t client_id, uintptr_t addr);
     uint32_t misses(uint32_t client_id) const;
     uint32_t hits(uint32_t client_id) const;
-private:
+public:
     void access(uint32_t client_id, uintptr_t addr, bool write);
 
     Cache cache_;

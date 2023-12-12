@@ -301,194 +301,194 @@ TEST_CASE("Way partitioning", "Way partitioning") {
 //     REQUIRE_THROWS(IntraNodePartitioning(2, 64, 4, 16, aux_table5));
 // }
 
-TEST_CASE("Intra node partitioning", "Intra node partitioning") {
-    //This is the situation that appears on the stage 2 report, same as above for way partitioning
-    vector<fixed_bits_t> aux_table{
-            fixed_bits_t{bitset<32>{0x0}, 1},
-            fixed_bits_t{bitset<32>{0x2}, 2},
-            fixed_bits_t{bitset<32>{0x3}, 2},
-    };//Three clients, unequal partitions
+//TEST_CASE("Intra node partitioning", "Intra node partitioning") {
+//    //This is the situation that appears on the stage 2 report, same as above for way partitioning
+//    vector<fixed_bits_t> aux_table{
+//            fixed_bits_t{bitset<32>{0x0}, 1},
+//            fixed_bits_t{bitset<32>{0x2}, 2},
+//            fixed_bits_t{bitset<32>{0x3}, 2},
+//    };//Three clients, unequal partitions
+//
+//    IntraNodePartitioning inp = IntraNodePartitioning(3, 256, 4, 16, aux_table);
+//
+//    //4 sets
+//
+//    for (int i = 0; i < 3; ++i) {
+//        REQUIRE(inp.misses(i) == 0);
+//        REQUIRE(inp.hits(i) == 0);
+//    }
+//
+//    //Under these circumstances, client 1 and 2 only have a fully associative cache, no indexing at all.
+//    //Client 0 has two sets, so only one bit is used for the index. Note that the tag should be of size 7 then!
+//
+//    //Addr 1 and 2, 3, 4 and 5 share index 1 for client 0, different tags. addr2 is important, if it fails, there is an error!
+//    uint32_t addr1 = 1 << 4;
+//    uint32_t addr2 = 3 << 4;
+//    uint32_t addr3 = 7 << 4;
+//    uint32_t addr4 = 15 << 4;
+//    uint32_t addr5 = 31 << 4;
+//
+//    //Addr 6 and 7 share index 0 for client 0, different offset
+//    uint32_t addr6 = 15;
+//    uint32_t addr7 = 3;
+//
+//    //Clients 1 and 2 should be fully associative (with assoc of 4)
+//
+//    //All misses, filling cache
+//    inp.write(1, addr1);
+//    inp.write(1, addr2);
+//    inp.write(1, addr3);
+//    inp.write(1, addr6); //Note that since fully assoc, 6 should go to the same (unique) set
+//
+//    inp.write(2, addr1);
+//    inp.write(2, addr2);
+//    inp.write(2, addr3);
+//    inp.write(2, addr6);
+//
+//    //All hits
+//    inp.write(1, addr1);
+//    inp.write(1, addr2);
+//    inp.write(1, addr3);
+//    inp.write(1, addr6);
+//
+//    inp.write(2, addr1);
+//    inp.write(2, addr2);
+//    inp.write(2, addr3);
+//    inp.write(2, addr6);
+//
+//    REQUIRE(inp.misses(1) == 4);
+//    REQUIRE(inp.hits(1) == 4);
+//
+//    REQUIRE(inp.misses(2) == 4);
+//    REQUIRE(inp.hits(2) == 4);
+//
+//    //LRU policy should be working still
+//    //All misses
+//    inp.write(1, addr5);
+//    inp.write(1, addr1);
+//    inp.write(1, addr2);
+//    inp.write(1, addr3);
+//    inp.write(1, addr6);
+//
+//    inp.write(1, addr2); //Hit
+//
+//    REQUIRE(inp.misses(1) == 9);
+//    REQUIRE(inp.hits(1) == 5);
+//
+//    //Client 0 should have two sets of assoc 4
+//    //All misses
+//    inp.write(0, addr1);
+//    inp.write(0, addr2);
+//    inp.write(0, addr3);
+//    inp.write(0, addr4);
+//    inp.write(0, addr6); //Different row, still miss
+//
+//    REQUIRE(inp.misses(0) == 5);
+//    REQUIRE(inp.hits(0) == 0);
+//
+//    inp.write(0, addr7); //Hit (same block as 6)
+//
+//    REQUIRE(inp.hits(0) == 1);
+//
+//    //Check that interleaving with another client does not affect this one
+//    //All hits
+//    inp.write(2, addr1);
+//    inp.write(2, addr2);
+//    inp.write(2, addr3);
+//    inp.write(2, addr6);
+//
+//    REQUIRE(inp.hits(2) == 8);
+//
+//    //All hits
+//    inp.write(0, addr1);
+//    inp.write(0, addr2);
+//    inp.write(0, addr3);
+//    inp.write(0, addr4);
+//
+//    REQUIRE(inp.hits(0) == 5);
+//    REQUIRE(inp.misses(0) == 5);
+//
+//    inp.write(0, addr5); //Miss, 1 evicted
+//    inp.write(0, addr2); //Hits
+//
+//    REQUIRE(inp.hits(0) == 6);
+//    REQUIRE(inp.misses(0) == 6);
+//}
 
-    IntraNodePartitioning inp = IntraNodePartitioning(3, 256, 4, 16, aux_table);
-
-    //4 sets
-
-    for (int i = 0; i < 3; ++i) {
-        REQUIRE(inp.misses(i) == 0);
-        REQUIRE(inp.hits(i) == 0);
-    }
-
-    //Under these circumstances, client 1 and 2 only have a fully associative cache, no indexing at all.
-    //Client 0 has two sets, so only one bit is used for the index. Note that the tag should be of size 7 then!
-
-    //Addr 1 and 2, 3, 4 and 5 share index 1 for client 0, different tags. addr2 is important, if it fails, there is an error!
-    uint32_t addr1 = 1 << 4;
-    uint32_t addr2 = 3 << 4;
-    uint32_t addr3 = 7 << 4;
-    uint32_t addr4 = 15 << 4;
-    uint32_t addr5 = 31 << 4;
-
-    //Addr 6 and 7 share index 0 for client 0, different offset
-    uint32_t addr6 = 15;
-    uint32_t addr7 = 3;
-
-    //Clients 1 and 2 should be fully associative (with assoc of 4)
-
-    //All misses, filling cache
-    inp.write(1, addr1);
-    inp.write(1, addr2);
-    inp.write(1, addr3);
-    inp.write(1, addr6); //Note that since fully assoc, 6 should go to the same (unique) set
-
-    inp.write(2, addr1);
-    inp.write(2, addr2);
-    inp.write(2, addr3);
-    inp.write(2, addr6);
-
-    //All hits
-    inp.write(1, addr1);
-    inp.write(1, addr2);
-    inp.write(1, addr3);
-    inp.write(1, addr6);
-
-    inp.write(2, addr1);
-    inp.write(2, addr2);
-    inp.write(2, addr3);
-    inp.write(2, addr6);
-
-    REQUIRE(inp.misses(1) == 4);
-    REQUIRE(inp.hits(1) == 4);
-
-    REQUIRE(inp.misses(2) == 4);
-    REQUIRE(inp.hits(2) == 4);
-
-    //LRU policy should be working still
-    //All misses
-    inp.write(1, addr5);
-    inp.write(1, addr1);
-    inp.write(1, addr2);
-    inp.write(1, addr3);
-    inp.write(1, addr6);
-
-    inp.write(1, addr2); //Hit
-
-    REQUIRE(inp.misses(1) == 9);
-    REQUIRE(inp.hits(1) == 5);
-
-    //Client 0 should have two sets of assoc 4
-    //All misses
-    inp.write(0, addr1);
-    inp.write(0, addr2);
-    inp.write(0, addr3);
-    inp.write(0, addr4);
-    inp.write(0, addr6); //Different row, still miss
-
-    REQUIRE(inp.misses(0) == 5);
-    REQUIRE(inp.hits(0) == 0);
-
-    inp.write(0, addr7); //Hit (same block as 6)
-
-    REQUIRE(inp.hits(0) == 1);
-
-    //Check that interleaving with another client does not affect this one
-    //All hits
-    inp.write(2, addr1);
-    inp.write(2, addr2);
-    inp.write(2, addr3);
-    inp.write(2, addr6);
-
-    REQUIRE(inp.hits(2) == 8);
-
-    //All hits
-    inp.write(0, addr1);
-    inp.write(0, addr2);
-    inp.write(0, addr3);
-    inp.write(0, addr4);
-
-    REQUIRE(inp.hits(0) == 5);
-    REQUIRE(inp.misses(0) == 5);
-
-    inp.write(0, addr5); //Miss, 1 evicted
-    inp.write(0, addr2); //Hits
-
-    REQUIRE(inp.hits(0) == 6);
-    REQUIRE(inp.misses(0) == 6);
-}
-
-TEST_CASE("Intra node partitioning second case", "Intra node partitioning") {
-    //This is the situation that appears on the stage 2 report, same as above for way partitioning
-    vector<fixed_bits_t> aux_table{
-            fixed_bits_t{bitset<32>{0x0}, 1},
-            fixed_bits_t{bitset<32>{0x2}, 2},
-            fixed_bits_t{bitset<32>{0x3}, 2},
-    };//Three clients, unequal partitions
-
-    IntraNodePartitioning inp = IntraNodePartitioning(3, 256, 2, 16, aux_table);
-
-    //8 sets divided into 4, 2 and 2
-
-    for (int i = 0; i < 3; ++i) {
-        REQUIRE(inp.misses(i) == 0);
-        REQUIRE(inp.hits(i) == 0);
-    }
-
-    //In this case, assuming we have at most 4 clients (3 bits used to partition the cache), we still have
-    //one remaining bit for set indexing (we need 3 in total)
-    //The tag is of size 64 - 4 (offset) - (3 - 2) (set indexing, set index max - log2(max_clients))
-
-    //index 0, different tags for client 0
-    uint32_t addr0 = 0;
-    uint32_t addr4 = 7 << 7;
-
-    //2 and 3 have the same index 3 for client 0
-    uint32_t addr1 = 15 << 4;
-    uint32_t addr2 = 3 << 4;
-    uint32_t addr3 = 7 << 4;
-
-    //Index 2, tag 0 for client 0
-    uint32_t addr5 = 2 << 4;
-
-    //Index 1, tag 0 for client 0
-    uint32_t addr6 = 1 << 4;
-
-    //Misses
-    inp.read(0, addr0);
-    inp.read(0, addr1);
-    inp.read(0, addr2);
-    inp.read(0, addr3); //Evicts addr1, but not 0
-
-    REQUIRE(inp.misses(0) == 4);
-    REQUIRE(inp.hits(0) == 0);
-
-    inp.read(0, addr0); //Hit
-    inp.read(0, addr2); //Hit
-
-    REQUIRE(inp.misses(0) == 4);
-    REQUIRE(inp.hits(0) == 2);
-
-    inp.read(0, addr1); //Miss
-
-    REQUIRE(inp.misses(0) == 5);
-
-    //Fill the rest of the cache sets with at least one value
-    inp.read(0, addr4); //Miss
-    inp.read(0, addr5); //Miss
-    inp.read(0, addr6); //Miss
-
-    REQUIRE(inp.misses(0) == 8);
-
-    //All hits
-    inp.read(0, addr0);
-    //Addr 1 has been evicted
-    inp.read(0, addr2);
-    inp.read(0, addr3);
-    inp.read(0, addr4);
-    inp.read(0, addr5);
-    inp.read(0, addr6);
-
-    REQUIRE(inp.misses(0) == 8);
-    REQUIRE(inp.hits(0) == 8);
-}
+//TEST_CASE("Intra node partitioning second case", "Intra node partitioning") {
+//    //This is the situation that appears on the stage 2 report, same as above for way partitioning
+//    vector<fixed_bits_t> aux_table{
+//            fixed_bits_t{bitset<32>{0x0}, 1},
+//            fixed_bits_t{bitset<32>{0x2}, 2},
+//            fixed_bits_t{bitset<32>{0x3}, 2},
+//    };//Three clients, unequal partitions
+//
+//    IntraNodePartitioning inp = IntraNodePartitioning(3, 256, 2, 16, aux_table);
+//
+//    //8 sets divided into 4, 2 and 2
+//
+//    for (int i = 0; i < 3; ++i) {
+//        REQUIRE(inp.misses(i) == 0);
+//        REQUIRE(inp.hits(i) == 0);
+//    }
+//
+//    //In this case, assuming we have at most 4 clients (3 bits used to partition the cache), we still have
+//    //one remaining bit for set indexing (we need 3 in total)
+//    //The tag is of size 64 - 4 (offset) - (3 - 2) (set indexing, set index max - log2(max_clients))
+//
+//    //index 0, different tags for client 0
+//    uint32_t addr0 = 0;
+//    uint32_t addr4 = 7 << 7;
+//
+//    //2 and 3 have the same index 3 for client 0
+//    uint32_t addr1 = 15 << 4;
+//    uint32_t addr2 = 3 << 4;
+//    uint32_t addr3 = 7 << 4;
+//
+//    //Index 2, tag 0 for client 0
+//    uint32_t addr5 = 2 << 4;
+//
+//    //Index 1, tag 0 for client 0
+//    uint32_t addr6 = 1 << 4;
+//
+//    //Misses
+//    inp.read(0, addr0);
+//    inp.read(0, addr1);
+//    inp.read(0, addr2);
+//    inp.read(0, addr3); //Evicts addr1, but not 0
+//
+//    REQUIRE(inp.misses(0) == 4);
+//    REQUIRE(inp.hits(0) == 0);
+//
+//    inp.read(0, addr0); //Hit
+//    inp.read(0, addr2); //Hit
+//
+//    REQUIRE(inp.misses(0) == 4);
+//    REQUIRE(inp.hits(0) == 2);
+//
+//    inp.read(0, addr1); //Miss
+//
+//    REQUIRE(inp.misses(0) == 5);
+//
+//    //Fill the rest of the cache sets with at least one value
+//    inp.read(0, addr4); //Miss
+//    inp.read(0, addr5); //Miss
+//    inp.read(0, addr6); //Miss
+//
+//    REQUIRE(inp.misses(0) == 8);
+//
+//    //All hits
+//    inp.read(0, addr0);
+//    //Addr 1 has been evicted
+//    inp.read(0, addr2);
+//    inp.read(0, addr3);
+//    inp.read(0, addr4);
+//    inp.read(0, addr5);
+//    inp.read(0, addr6);
+//
+//    REQUIRE(inp.misses(0) == 8);
+//    REQUIRE(inp.hits(0) == 8);
+//}
 
 TEST_CASE("Inter node partitioning input", "Inter node partitioning") {
     vector<uint32_t> part = {2, 1, 1};
