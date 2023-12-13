@@ -3,15 +3,8 @@
 #include <cmath>
 #include <iostream>
 
-static bool is_power2(uint64_t n) {
-    return (n != 0) && ((n & (n - 1)) == 0);
-}
-
 Cache::Cache(uint64_t cache_size, uint32_t sets, uint32_t assoc, uint32_t block_size)
     : cache_size_(cache_size), block_size_(block_size), misses_(0), hits_(0) {
-    if (!is_power2(cache_size) || !is_power2(block_size) || !is_power2(assoc)) {
-        throw std::invalid_argument("Cache size or block size or associativity are not power of 2!");
-    }
 
     cache_.resize(sets, CacheSet(assoc));
 
@@ -23,10 +16,6 @@ Cache::Cache(uint64_t cache_size, uint32_t sets, uint32_t assoc, uint32_t block_
 
 Cache::Cache(uint64_t cache_size, uint32_t assoc, uint32_t block_size)
         : cache_size_(cache_size), block_size_(block_size), misses_(0), hits_(0) {
-
-    if (!is_power2(cache_size) || !is_power2(block_size) || !is_power2(assoc)) {
-        throw std::invalid_argument("Cache size or block size or associativity are not power of 2!");
-    }
 
     cache_.resize(compute_sets(assoc), CacheSet(assoc));
 
@@ -82,6 +71,51 @@ uint32_t Cache::compute_sets(uint32_t assoc) const {
 CacheSet::CacheSet(uint32_t assoc) : assoc_(assoc), lru_stats_(assoc), cache_lines_(assoc) {
     for (size_t i = 0; i < assoc; i++) {
         lru_stats_[i] = i;
+    }
+}
+
+void Cache::access(uintptr_t addr) {
+    access(Cache::compute_location_info(addr, block_size(), sets(), tag_bits()), addr);
+}
+
+void Cache::access(const LocationInfo& loc, uintptr_t addr) {
+    try {
+        assert(loc.set_index < sets());
+        if (loc.set_index >= sets()) {
+            throw std::exception();
+        }
+        auto &set = cache_[loc.set_index];
+        int32_t way = -1;
+        for (size_t i = 0; i < set.associativity(); i++) {
+            auto& cache_line = set.cache_line(i);
+            if (cache_line.tag == loc.tag && cache_line.state == CacheLineState::VALID) {
+                way = i;
+                break;
+            }
+        }
+
+        if (way == -1) {
+            way = set.evict();
+        }
+
+        auto& cache_line = set.cache_line(way);
+        if (cache_line.state == CacheLineState::INVALID) {
+            update_misses();
+            cache_line.state = CacheLineState::VALID;
+            cache_line.tag = loc.tag;
+            cache_line.addr = addr;
+        } else {
+            update_hits();
+        }
+
+//        if (write) {
+//            cache_line.state = CacheLineState::DIRTY;
+//        }
+
+        set.update_lru(way, true);
+    }
+    catch (const std::exception& ex) {
+        std::cerr << ex.what() << std::endl;
     }
 }
 
@@ -143,64 +177,4 @@ bool Cache::exists(uintptr_t addr) {
     }
 
     return false;
-}
-
-void Cache::read(uintptr_t addr) {
-    access(compute_location_info(addr), false, addr);
-}
-
-void Cache::write(uintptr_t addr) {
-    access(compute_location_info(addr), false, addr);
-}
-
-// Extracts location information from the address, using masking.
-LocationInfo Cache::compute_location_info(uintptr_t addr) const noexcept {
-    auto block_bits = (uint32_t) std::log2(block_size());
-    auto set_bits = (uint32_t) std::log2(sets());
-
-    return {
-        .set_index = static_cast<uint32_t>((addr >> block_bits) & mask(set_bits)),
-        .tag = static_cast<uint64_t>((addr >> (block_bits + set_bits)) & mask(tag_bits()))
-    };
-}
-
-void Cache::access(const LocationInfo& loc, bool write, uintptr_t addr) {
-    try {
-        assert(loc.set_index < sets());
-        if (loc.set_index >= sets()) {
-            throw std::exception();
-        }
-        auto &set = cache_[loc.set_index];
-        int32_t way = -1;
-        for (size_t i = 0; i < set.associativity(); i++) {
-            auto& cache_line = set.cache_line(i);
-            if (cache_line.tag == loc.tag && cache_line.state == CacheLineState::VALID) {
-                way = i;
-                break;
-            }
-        }
-
-        if (way == -1) {
-            way = set.evict();
-        }
-
-        auto& cache_line = set.cache_line(way);
-        if (cache_line.state == CacheLineState::INVALID) {
-            update_misses();
-            cache_line.state = CacheLineState::VALID;
-            cache_line.tag = loc.tag;
-            cache_line.addr = addr;
-        } else {
-            update_hits();
-        }
-
-//        if (write) {
-//            cache_line.state = CacheLineState::DIRTY;
-//        }
-
-        set.update_lru(way, true);
-    }
-    catch (const std::exception& ex) {
-        std::cerr << ex.what() << std::endl;
-    }
 }

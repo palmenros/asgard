@@ -5,7 +5,7 @@
 #include <iostream>
 #include "llc_partitioning.hpp"
 
-WayPartitioning::WayPartitioning(const std::vector<uint32_t> &n_ways, uint64_t cache_size, uint32_t block_size) {
+WayPartitioning::WayPartitioning(uint64_t cache_size, uint32_t block_size, const std::vector<uint32_t>& n_ways) {
     uint32_t s_ways = 0;
     for (const auto& n_way: n_ways) {
         s_ways += n_way;
@@ -22,18 +22,13 @@ WayPartitioning::WayPartitioning(const std::vector<uint32_t> &n_ways, uint64_t c
     }
 }
 
-void WayPartitioning::read(uint32_t client_id, uintptr_t addr) {
+void WayPartitioning::access(uint32_t client_id, uintptr_t addr) {
     if (client_id >= way_partitioned_caches_.size()) {
         throw std::invalid_argument("Invalid client_id given");
     }
-    way_partitioned_caches_[client_id].read(addr);
-}
-
-void WayPartitioning::write(uint32_t client_id, uintptr_t addr) {
-    if (client_id >= way_partitioned_caches_.size()) {
-        throw std::invalid_argument("Invalid client_id given");
-    }
-    return way_partitioned_caches_[client_id].write(addr);
+    auto& cache = way_partitioned_caches_[client_id];
+    auto loc = Cache::compute_location_info(addr, cache.block_size(), cache.sets(), cache.tag_bits());
+    cache.access(loc, addr);
 }
 
 uint32_t WayPartitioning::misses(uint32_t client_id) const {
@@ -50,12 +45,8 @@ uint32_t WayPartitioning::hits(uint32_t client_id) const {
     return way_partitioned_caches_[client_id].hits();
 }
 
-InterNodePartitioning::InterNodePartitioning(uint32_t clients, const std::vector<uint32_t>& n_slices,
-                                             uint64_t slice_size, uint32_t assoc, uint32_t block_size) {
-    if (n_slices.size() != clients) {
-        throw std::invalid_argument("Invalid clients or slice array given!");
-    }
-    memory_nodes_.resize(clients);
+InterNodePartitioning::InterNodePartitioning(uint64_t slice_size, uint32_t assoc, uint32_t block_size, const std::vector<uint32_t>& n_slices) {
+    memory_nodes_.resize(n_slices.size());
     for (size_t i = 0; i < n_slices.size(); i++) {
         std::vector<Cache> slices(n_slices[i], Cache(slice_size, assoc, block_size));
         memory_nodes_[i] = slices;
@@ -63,13 +54,33 @@ InterNodePartitioning::InterNodePartitioning(uint32_t clients, const std::vector
 }
 
 
-void InterNodePartitioning::read(uint32_t client_id, uintptr_t addr) {
-    access(client_id, addr, false);
+static uint32_t bits_to_represent(uint32_t n) {
+    return n > 0 ? 1 + bits_to_represent(n/2) : 0;
 }
 
-void InterNodePartitioning::write(uint32_t client_id, uintptr_t addr) {
-    access(client_id, addr, true);
+void InterNodePartitioning::access(uint32_t client_id, uintptr_t addr) {
+    if (client_id >= memory_nodes_.size()) {
+        throw std::invalid_argument("Invalid client_id given!");
+    }
+    // Find the LLC slices that belong to that ID.
+    auto& memory_node = memory_nodes_[client_id];
+
+    // // Using block bits as page offset bits.
+    auto page_offset_bits = (uint32_t) std::log2(memory_node[0].block_size());
+    uint32_t node_selection_bits = bits_to_represent(memory_nodes_.size());
+
+    auto node_selection = static_cast<uint32_t>((addr >> page_offset_bits) & Cache::mask(node_selection_bits));
+    auto& slice = memory_node[node_selection % memory_node.size()];
+
+    slice.access(Cache::compute_location_info(addr, slice.block_size(), slice.sets(), slice.tag_bits()), addr);
+
+//    if (write) {
+//        slice.write(addr);
+//    } else {
+//        slice.read(addr);
+//    }
 }
+
 
 uint32_t InterNodePartitioning::misses(uint32_t client_id) {
     // Sum of all misses of all memory nodes.
@@ -110,49 +121,12 @@ const std::vector<Cache> &InterNodePartitioning::memory_nodes(uint32_t client_id
     return memory_nodes_[client_id];
 }
 
-static uint32_t bits_to_represent(uint32_t n) {
-    return n > 0 ? 1 + bits_to_represent(n/2) : 0;
-}
-
-void InterNodePartitioning::access(uint32_t client_id, uintptr_t addr, bool write) {
-    if (client_id >= memory_nodes_.size()) {
-        throw std::invalid_argument("Invalid client_id given!");
-    }
-    // Find the LLC slices that belong to that ID.
-    auto& memory_node = memory_nodes_[client_id];
-
-    // TODO(kostas). FIXME.
-    auto page_offset_bits = (uint32_t) std::log2(memory_node[0].block_size());
-    uint32_t node_selection_bits = bits_to_represent(memory_nodes_.size());
-
-    auto node_selection = static_cast<uint32_t>((addr >> page_offset_bits) & Cache::mask(node_selection_bits));
-    auto& slice = memory_node[node_selection % memory_node.size()];
-
-    if (write) {
-        slice.write(addr);
-    } else {
-        slice.read(addr);
-    }
-}
-
-IntraNodePartitioning::IntraNodePartitioning(uint32_t clients, uint64_t cache_size, uint32_t assoc,
+IntraNodePartitioning::IntraNodePartitioning(uint64_t cache_size, uint32_t assoc,
                                              uint32_t block_size, std::vector<fixed_bits_t> aux_table)
                                              : cache_(cache_size, assoc, block_size),
-                                               aux_table_(std::move(aux_table)), stats_(clients, {0, 0}) {
-    if (aux_table_.size() != clients) {
-        throw std::invalid_argument("Invalid clients or auxiliary table given!");
-    }
-}
+                                               aux_table_(std::move(aux_table)), stats_(aux_table_.size(), {0, 0}) {}
 
-void IntraNodePartitioning::read(uint32_t client_id, uintptr_t addr) {
-    access(client_id, addr, false);
-}
-
-void IntraNodePartitioning::write(uint32_t client_id, uintptr_t addr) {
-    access(client_id, addr, true);
-}
-
-void IntraNodePartitioning::access(uint32_t client_id, uintptr_t addr, bool write) {
+void IntraNodePartitioning::access(uint32_t client_id, uintptr_t addr) {
     if (client_id >= aux_table_.size()) {
         throw std::invalid_argument("Invalid client_id given!");
     }
@@ -178,11 +152,9 @@ void IntraNodePartitioning::access(uint32_t client_id, uintptr_t addr, bool writ
         .tag = static_cast<uint64_t>(addr >> block_offset_bits) & Cache::mask(tag_bits)
     };
 
-    std::cout << "Accessed " << loc.set_index << " (tag) " << loc.tag << std::endl;
-
     auto& stats = stats_[client_id];
     uint32_t misses = cache_.misses();
-    cache_.access(loc, write, addr);
+    cache_.access(loc, addr);
     if (cache_.misses() > misses) {
         stats.first++;
     } else {
@@ -202,4 +174,54 @@ uint32_t IntraNodePartitioning::hits(uint32_t client_id) const {
         throw std::invalid_argument("Invalid client_id given");
     }
     return stats_[client_id].second;
+}
+
+Cache &IntraNodePartitioning::cache() {
+    return cache_;
+}
+
+// TODO(kostas): Discuss with Luis how to initialize this.
+ClusterPartitioning::ClusterPartitioning() {
+
+}
+
+void ClusterPartitioning::access(uint32_t client_id, uintptr_t addr) {
+    if (client_id >= clusters_.size()) {
+        throw std::invalid_argument("Invalid client_id given");
+    }
+
+    // Using block bits as page offset bits.
+    auto page_offset_bits = (uint32_t) std::log2(clusters_[0].inp_cache[0].cache().block_size());
+    // Node selection bits to represent number of clusters.
+    uint32_t node_selection_bits = bits_to_represent(clusters_.size());
+
+    // Node selection % cores.
+    auto node_selection = static_cast<uint32_t>((addr >> page_offset_bits) & Cache::mask(node_selection_bits)) % n_cores;
+    uint32_t cluster = 0;
+    for (size_t i = 0; i < clusters_.size(); i++) {
+        if (clusters_[i].c_sum >= node_selection) {
+            cluster = i;
+            break;
+        }
+    }
+
+    auto& inp_cache = clusters_[cluster].inp_cache;
+
+    inp_cache.access(client_id, addr);
+}
+
+uint32_t ClusterPartitioning::misses(uint32_t client_id) const {
+    if (client_id >= clusters_.size()) {
+        throw std::invalid_argument("Invalid client_id given");
+    }
+
+    return clusters_[client_id].inp.misses(client_id);
+}
+
+uint32_t ClusterPartitioning::hits(uint32_t client_id) const {
+    if (client_id >= clusters_.size()) {
+        throw std::invalid_argument("Invalid client_id given");
+    }
+
+    return clusters_[client_id].inp.hits(client_id);
 }

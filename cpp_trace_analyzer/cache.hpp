@@ -6,7 +6,6 @@
 
 enum class CacheLineState {
     VALID,
-    DIRTY,
     INVALID
 };
 
@@ -53,10 +52,23 @@ public:
         return result;
     }
 
+    // Extracts location information from the address, using masking.
+    static LocationInfo compute_location_info(uintptr_t addr, uint32_t block_size, uint32_t sets, uint32_t tag_bits) {
+        auto block_bits = (uint32_t) std::log2(block_size);
+        auto set_bits = (uint32_t) std::log2(sets);
+
+        return {
+                .set_index = static_cast<uint32_t>((addr >> block_bits) & mask(set_bits)),
+                .tag = static_cast<uint64_t>((addr >> (block_bits + set_bits)) & mask(tag_bits))
+        };
+    }
+
+    // Used for debugging.
     bool exists(uintptr_t addr);
-    void read(uintptr_t addr);
-    void write(uintptr_t addr);
-    void access(const LocationInfo& loc, bool write, uintptr_t addr);
+//    void read(uintptr_t addr);
+//    void write(uintptr_t addr);
+    void access(uintptr_t addr);
+    void access(const LocationInfo& loc, uintptr_t addr);
     uint64_t cache_size() const noexcept;
     uint32_t sets() const noexcept;
     uint32_t block_size() const noexcept;
@@ -76,5 +88,4 @@ private:
     uint32_t misses_, hits_;
 
     uint32_t compute_sets(uint32_t assoc) const;
-    LocationInfo compute_location_info(uintptr_t addr) const noexcept;
 };
