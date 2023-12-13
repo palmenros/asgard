@@ -167,13 +167,12 @@ TEST_CASE("LRU policy works", "cache") {
     REQUIRE(pc2.misses() == 5);
 }
 
-// TODO(Kostas, Luis): Review this.
-//TEST_CASE("Way partitioning valid input", "Way partitioning") {
-//    vector<uint32_t> partition{1, 2, 1};
-//
-//    //Not big enough cache
-//    REQUIRE_THROWS(WayPartitioning(partition, 4, 2));
-//}
+TEST_CASE("Way partitioning valid input", "Way partitioning") {
+    vector<uint32_t> partition{1, 2, 1};
+
+    //Not big enough cache
+    REQUIRE_THROWS(WayPartitioning(partition, 4, 2));
+}
 
 TEST_CASE("Way partitioning", "Way partitioning") {
     //Three clients, unequal partitions. This is the situation depicted on the stage 2 report (modulo the clients)

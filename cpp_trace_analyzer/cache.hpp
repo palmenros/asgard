@@ -39,6 +39,8 @@ private:
 
 class Cache {
 public:
+    Cache() = default;
+    Cache(uint64_t cache_size, uint32_t sets, uint32_t assoc, uint32_t block_size);
     Cache(uint64_t cache_size, uint32_t assoc, uint32_t block_size);
 
     // Creates a bitmask consisting of ones, of size `bits`.

@@ -7,6 +7,20 @@ static bool is_power2(uint64_t n) {
     return (n != 0) && ((n & (n - 1)) == 0);
 }
 
+Cache::Cache(uint64_t cache_size, uint32_t sets, uint32_t assoc, uint32_t block_size)
+    : cache_size_(cache_size), block_size_(block_size), misses_(0), hits_(0) {
+    if (!is_power2(cache_size) || !is_power2(block_size) || !is_power2(assoc)) {
+        throw std::invalid_argument("Cache size or block size or associativity are not power of 2!");
+    }
+
+    cache_.resize(sets, CacheSet(assoc));
+
+    auto block_bits = (uint32_t) std::log2(block_size);
+    auto set_bits = (uint32_t) std::log2(cache_.size());
+
+    tag_bits_ = 64 - set_bits - block_bits;
+}
+
 Cache::Cache(uint64_t cache_size, uint32_t assoc, uint32_t block_size)
         : cache_size_(cache_size), block_size_(block_size), misses_(0), hits_(0) {
 

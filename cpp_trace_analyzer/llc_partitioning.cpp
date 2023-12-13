@@ -5,9 +5,20 @@
 #include <iostream>
 #include "llc_partitioning.hpp"
 
-WayPartitioning::WayPartitioning(const std::vector<uint32_t> &n_ways, uint64_t slice_size, uint32_t block_size) {
+WayPartitioning::WayPartitioning(const std::vector<uint32_t> &n_ways, uint64_t cache_size, uint32_t block_size) {
+    uint32_t s_ways = 0;
     for (const auto& n_way: n_ways) {
-        way_partitioned_caches_.emplace_back(slice_size, n_way, block_size);
+        s_ways += n_way;
+    }
+
+    if (cache_size % (block_size * s_ways) != 0) {
+        throw std::invalid_argument("Block size * associativity should be a multiple of cache size!");
+    }
+    uint32_t sets = cache_size / ((uint64_t) block_size * s_ways);
+
+    way_partitioned_caches_.resize(n_ways.size());
+    for (size_t i = 0; i < n_ways.size(); i++) {
+        way_partitioned_caches_[i] = Cache(cache_size, sets, n_ways[i], block_size);
     }
 }
 

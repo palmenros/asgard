@@ -8,7 +8,7 @@
 // Way partitioning.
 class WayPartitioning {
 public:
-    WayPartitioning(const std::vector<uint32_t>& n_ways, uint64_t slice_size, uint32_t block_size);
+    WayPartitioning(const std::vector<uint32_t>& n_ways, uint64_t cache_size, uint32_t block_size);
 
     void read(uint32_t client_id, uintptr_t addr);
     void write(uint32_t client_id, uintptr_t addr);
