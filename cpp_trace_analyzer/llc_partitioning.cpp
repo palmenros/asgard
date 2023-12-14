@@ -191,7 +191,7 @@ void ClusterPartitioning::access(uint32_t client_id, uintptr_t addr) {
     }
 
     // Using block bits as page offset bits.
-    auto page_offset_bits = (uint32_t) std::log2(clusters_[0].inp_cache[0].cache().block_size());
+    auto page_offset_bits = (uint32_t) std::log2(clusters_[0].inp_cache.cache().block_size());
     // Node selection bits to represent number of clusters.
     uint32_t node_selection_bits = bits_to_represent(clusters_.size());
 
@@ -215,7 +215,7 @@ uint32_t ClusterPartitioning::misses(uint32_t client_id) const {
         throw std::invalid_argument("Invalid client_id given");
     }
 
-    return clusters_[client_id].inp.misses(client_id);
+    return clusters_[client_id].inp_cache.misses(client_id);
 }
 
 uint32_t ClusterPartitioning::hits(uint32_t client_id) const {
@@ -223,5 +223,5 @@ uint32_t ClusterPartitioning::hits(uint32_t client_id) const {
         throw std::invalid_argument("Invalid client_id given");
     }
 
-    return clusters_[client_id].inp.hits(client_id);
+    return clusters_[client_id].inp_cache.hits(client_id);
 }
