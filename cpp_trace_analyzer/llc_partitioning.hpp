@@ -139,7 +139,7 @@ uint32_t ClusterPartitioningProposal<CacheClass>::hits(uint32_t client_id) const
 }
 
 template<class CacheClass>
-std::vector<cluster_t<CacheClass>> &ClusterPartitioningProposal<CacheClass>::clusters() {
+std::vector<CacheClass> &ClusterPartitioningProposal<CacheClass>::clusters() {
     return clusters_;
 }
 
