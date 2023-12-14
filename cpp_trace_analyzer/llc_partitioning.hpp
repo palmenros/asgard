@@ -7,13 +7,14 @@
 
 class WayPartitioning {
 public:
-    WayPartitioning(uint64_t cache_size, uint32_t block_size, const std::vector<uint32_t>& n_ways);
+    WayPartitioning(uint64_t cache_size, uint32_t block_size, const std::vector<uint32_t> &n_ways);
 
-//    void read(uint32_t client_id, uintptr_t addr);
-//    void write(uint32_t client_id, uintptr_t addr);
+    //    void read(uint32_t client_id, uintptr_t addr);
+    //    void write(uint32_t client_id, uintptr_t addr);
     void access(uint32_t client_id, uintptr_t addr);
     uint32_t misses(uint32_t client_id) const;
     uint32_t hits(uint32_t client_id) const;
+
 private:
     std::vector<Cache> way_partitioned_caches_;
 };
@@ -23,17 +24,18 @@ public:
     // clients is the number of clients in the system.
     // n_slices is how many slices each client has.
     // the rest are information for LLC slice.
-    InterNodePartitioning(uint64_t cache_size, uint32_t assoc, uint32_t block_size, const std::vector<uint32_t>& n_slices);
+    InterNodePartitioning(uint64_t cache_size, uint32_t assoc, uint32_t block_size, const std::vector<uint32_t> &n_slices);
 
 
-//    void read(uint32_t client_id, uintptr_t addr);
-//    void write(uint32_t client_id, uintptr_t addr);
+    //    void read(uint32_t client_id, uintptr_t addr);
+    //    void write(uint32_t client_id, uintptr_t addr);
     void access(uint32_t client_id, uintptr_t addr);
     uint32_t misses(uint32_t client_id);
     uint32_t hits(uint32_t client_id);
     const std::vector<Cache> &memory_nodes(uint32_t client_id);
+
 private:
-//    void access(uint32_t client_id, uintptr_t addr, bool write);
+    //    void access(uint32_t client_id, uintptr_t addr, bool write);
 
     // Memory node list per client.
     std::vector<std::vector<Cache>> memory_nodes_;
@@ -48,21 +50,22 @@ class IntraNodePartitioning {
 public:
     IntraNodePartitioning(uint64_t cache_size, uint32_t assoc, uint32_t block_size, std::vector<fixed_bits_t> aux_table);
 
-//    void read(uint32_t client_id, uintptr_t addr);
-//    void write(uint32_t client_id, uintptr_t addr);
+    //    void read(uint32_t client_id, uintptr_t addr);
+    //    void write(uint32_t client_id, uintptr_t addr);
     void access(uint32_t client_id, uintptr_t addr);
     uint32_t misses(uint32_t client_id) const;
     uint32_t hits(uint32_t client_id) const;
     Cache &cache();
+
 private:
-//    void access(uint32_t client_id, uintptr_t addr, bool write);
+    //    void access(uint32_t client_id, uintptr_t addr, bool write);
 
     Cache cache_;
     std::vector<fixed_bits_t> aux_table_;
     std::vector<std::pair<uint32_t, uint32_t>> stats_;
 };
 
-template <class CacheClass>
+template<class CacheClass>
 struct cluster_t {
     // Each memory node of the cluster is managed using intra-node partitioning.
     CacheClass cache;
@@ -73,14 +76,21 @@ struct cluster_t {
 template<class CacheClass>
 class ClusterPartitioningProposal {
 public:
-    ClusterPartitioningProposal(uint64_t cache_size, uint32_t assoc, uint32_t block_size, const std::vector<uint32_t>& coresPerClient);
+    ClusterPartitioningProposal(uint64_t cache_size, uint32_t assoc, uint32_t block_size,
+                                uint32_t totalCoresPerCluster,
+                                const std::vector<std::vector<uint32_t>> &coresPerClientPerCluster);
 
-//    void read(uint32_t client_id, uintptr_t addr);
-//    void write(uint32_t client_id, uintptr_t addr);
+    //LOOK AT ME HERE!
+    //coresPerClientPerCluster[i][j] gives the number of cores client j has in cluster i
+    //You can deduce the number of clusters and clients from the vector size
+
+    //    void read(uint32_t client_id, uintptr_t addr);
+    //    void write(uint32_t client_id, uintptr_t addr);
     void access(uint32_t client_id, uintptr_t addr);
     uint32_t misses(uint32_t client_id) const;
     uint32_t hits(uint32_t client_id) const;
     std::vector<CacheClass> &clusters();
+
 private:
     // List of clusters per client.
     std::vector<CacheClass> clusters_;
@@ -90,8 +100,9 @@ private:
 
 // TODO(kostas): Discuss with Luis how to initialize this.
 template<class CacheClass>
-ClusterPartitioningProposal<CacheClass>::ClusterPartitioningProposal(uint64_t cache_size, uint32_t assoc, uint32_t block_size, const std::vector<uint32_t>& coresPerClient) {
-
+ClusterPartitioningProposal<CacheClass>::ClusterPartitioningProposal(uint64_t cache_size, uint32_t assoc, uint32_t block_size,
+                                                                     uint32_t totalCoresPerCluster,
+                                                                     const std::vector<std::vector<uint32_t>> &coresPerClientPerCluster) {
 }
 
 template<class CacheClass>
@@ -115,7 +126,7 @@ void ClusterPartitioningProposal<CacheClass>::access(uint32_t client_id, uintptr
         }
     }
 
-    auto& inp_cache = clusters_[cluster].inp_cache;
+    auto &inp_cache = clusters_[cluster].inp_cache;
 
     inp_cache.access(client_id, addr);
 }
@@ -146,7 +157,12 @@ std::vector<CacheClass> &ClusterPartitioningProposal<CacheClass>::clusters() {
 template<class CacheClass>
 class ClusterPartitioningNormal {
 public:
-    ClusterPartitioningNormal(uint64_t cache_size, uint32_t assoc, uint32_t block_size, const std::vector<uint32_t>& coresPerClient);
+    ClusterPartitioningNormal(uint64_t cache_size, uint32_t assoc, uint32_t block_size,
+                              uint32_t totalCoresPerCluster,
+                              const std::vector<std::vector<uint32_t>> &coresPerClientPerCluster);
+
+    //LOOK AT ME HERE!
+    //coresPerClientPerCluster[i][j] gives the number of cores client j has in cluster i
 
     //    void read(uint32_t client_id, uintptr_t addr);
     //    void write(uint32_t client_id, uintptr_t addr);
@@ -154,12 +170,18 @@ public:
     uint32_t misses(uint32_t client_id) const;
     uint32_t hits(uint32_t client_id) const;
     std::vector<CacheClass> &clusters();
+
 private:
     // List of clusters per client.
     std::vector<CacheClass> clusters_;
     // Total number of cores the client owns.
     uint32_t n_cores;
 };
+template<class CacheClass>
+ClusterPartitioningNormal<CacheClass>::ClusterPartitioningNormal(uint64_t cache_size, uint32_t assoc, uint32_t block_size,
+                                                                 uint32_t totalCoresPerCluster,
+                                                                 const std::vector<std::vector<uint32_t>> &coresPerClientPerCluster) {
+}
 
 template<class CacheClass>
 std::vector<CacheClass> &ClusterPartitioningNormal<CacheClass>::clusters() {
@@ -177,8 +199,4 @@ uint32_t ClusterPartitioningNormal<CacheClass>::misses(uint32_t client_id) const
 
 template<class CacheClass>
 void ClusterPartitioningNormal<CacheClass>::access(uint32_t client_id, uintptr_t addr) {
-}
-
-template<class CacheClass>
-ClusterPartitioningNormal<CacheClass>::ClusterPartitioningNormal(uint64_t cache_size, uint32_t assoc, uint32_t block_size, const std::vector<uint32_t> &coresPerClient) {
 }
