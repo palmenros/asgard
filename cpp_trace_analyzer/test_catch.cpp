@@ -777,10 +777,10 @@ TEST_CASE("Inter-intra node partitioning", "Inter-intra node partitioning") {
     uint32_t addr6 = createAddressIntraInterFirstCluster(0, 6, 0, 0);
     uint32_t addr7 = createAddressIntraInterFirstCluster(1, 5, 0, 0);
 
-    uint32_t addr8 = createAddressIntraInterSecondCluster(0, 2, 4, 0);
-    uint32_t addr9 = createAddressIntraInterSecondCluster(1, 3, 4, 0);
-    uint32_t addr10 = createAddressIntraInterSecondCluster(2, 8, 4, 0);
-    uint32_t addr11 = createAddressIntraInterSecondCluster(3, 0, 4, 4);
+    uint32_t addr8 = createAddressIntraInterSecondCluster(0, 2, 3, 0);
+    uint32_t addr9 = createAddressIntraInterSecondCluster(1, 3, 3, 0);
+    uint32_t addr10 = createAddressIntraInterSecondCluster(2, 8, 3, 0);
+    uint32_t addr11 = createAddressIntraInterSecondCluster(3, 0, 3, 4);
 
     uint32_t addr12 = createAddressIntraInterThirdCluster(0, 4, 0, 0);
     uint32_t addr13 = createAddressIntraInterThirdCluster(1, 9, 0, 0);
@@ -793,6 +793,9 @@ TEST_CASE("Inter-intra node partitioning", "Inter-intra node partitioning") {
     uint32_t addr18 = createAddressIntraInterThirdCluster(0, 5, 0, 0);
     uint32_t addr19 = createAddressIntraInterThirdCluster(1, 11, 0, 0);
     uint32_t addr20 = createAddressIntraInterThirdCluster(2, 17, 0, 0);
+
+    uint32_t addr21 = createAddressIntraInterSecondCluster(0, 2, 1, 0);
+    uint32_t addr22 = createAddressIntraInterSecondCluster(1, 3, 1, 0);
 
     //All misses, let's fill the caches
     inp.access(0, addr0);
@@ -851,6 +854,10 @@ TEST_CASE("Inter-intra node partitioning", "Inter-intra node partitioning") {
     REQUIRE(inp.get_cache_slice(0, 0).hits() == 4);
     REQUIRE(inp.get_cache_slice(1, 0).hits() == 2);
 
+    //Misses
+    inp.access(2, addr21);
+    inp.access(2, addr22);
+
     //Hit and evict and call again 8 and 9
     inp.access(2, addr8);
     inp.access(2, addr9);
@@ -861,11 +868,15 @@ TEST_CASE("Inter-intra node partitioning", "Inter-intra node partitioning") {
     inp.access(2, addr8);
     inp.access(2, addr9);
 
-    REQUIRE(inp.get_cache_slice(2, 2).misses() == 6);
-    REQUIRE(inp.get_cache_slice(2, 2).hits() == 2);
+    //Hits
+    inp.access(2, addr21);
+    inp.access(2, addr22);
 
-    REQUIRE(inp.hits(2) == 2);
-    REQUIRE(inp.misses(2) == 8);
+    REQUIRE(inp.get_cache_slice(2, 2).misses() == 8);
+    REQUIRE(inp.get_cache_slice(2, 2).hits() == 4);
+
+    REQUIRE(inp.hits(2) == 4);
+    REQUIRE(inp.misses(2) == 10);
 
     //Misses + Evictions
     inp.access(0, addr14);
@@ -885,6 +896,6 @@ TEST_CASE("Inter-intra node partitioning", "Inter-intra node partitioning") {
     REQUIRE(inp.get_cache_slice(1, 3).hits() == 1);
     REQUIRE(inp.get_cache_slice(2, 3).hits() == 1);
 
-    REQUIRE(inp.hits(2) == 3);
-    REQUIRE(inp.misses(2) == 9);
+    REQUIRE(inp.hits(2) == 5);
+    REQUIRE(inp.misses(2) == 11);
 }
