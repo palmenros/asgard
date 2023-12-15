@@ -91,6 +91,7 @@ public:
     InterIntraNodePartitioning(uint32_t assoc, uint32_t block_size,
                                // Size of cache size for each client.
                                // n_cache_sizes[clusterId][client] -> Size of the private cache of that client
+                               // used to instantiate inp_
                                const std::vector<std::vector<uint32_t>> &n_cache_sizes,
                                // aux_tables_per_client[client] -> Auxiliary table for client
                                std::vector<inter_intra_aux_table_t> aux_tables_per_client,
