@@ -20,9 +20,8 @@ TEST_CASE("Correct number of sets", "cache") {
     //128 / (1 * 2) = 64
     REQUIRE(pc.sets() == 64);
 
-    Cache pc2 = Cache(40, 1, 2);
-
-    REQUIRE(pc2.sets() == 20);
+    //You were right with this test Kostas
+    REQUIRE_THROWS(Cache(40, 1, 2));
 }
 
 TEST_CASE("Valid args", "cache") {
@@ -326,7 +325,7 @@ TEST_CASE("Intra node partitioning", "Intra node partitioning") {
     inp.access(1, addr1);
     inp.access(1, addr2);
     inp.access(1, addr3);
-    inp.access(1, addr6); //Note that since fully assoc, 6 should go to the same (unique) set
+    inp.access(1, addr6);//Note that since fully assoc, 6 should go to the same (unique) set
 
     inp.access(2, addr1);
     inp.access(2, addr2);
@@ -358,7 +357,7 @@ TEST_CASE("Intra node partitioning", "Intra node partitioning") {
     inp.access(1, addr3);
     inp.access(1, addr6);
 
-    inp.access(1, addr2); //Hit
+    inp.access(1, addr2);//Hit
 
     REQUIRE(inp.misses(1) == 9);
     REQUIRE(inp.hits(1) == 5);
@@ -369,12 +368,12 @@ TEST_CASE("Intra node partitioning", "Intra node partitioning") {
     inp.access(0, addr2);
     inp.access(0, addr3);
     inp.access(0, addr4);
-    inp.access(0, addr6); //Different row, still miss
+    inp.access(0, addr6);//Different row, still miss
 
     REQUIRE(inp.misses(0) == 5);
     REQUIRE(inp.hits(0) == 0);
 
-    inp.access(0, addr7); //Hit (same block as 6)
+    inp.access(0, addr7);//Hit (same block as 6)
 
     REQUIRE(inp.hits(0) == 1);
 
@@ -396,8 +395,8 @@ TEST_CASE("Intra node partitioning", "Intra node partitioning") {
     REQUIRE(inp.hits(0) == 5);
     REQUIRE(inp.misses(0) == 5);
 
-    inp.access(0, addr5); //Miss, 1 evicted
-    inp.access(0, addr2); //Hits
+    inp.access(0, addr5);//Miss, 1 evicted
+    inp.access(0, addr2);//Hits
 
     REQUIRE(inp.hits(0) == 6);
     REQUIRE(inp.misses(0) == 6);
@@ -443,25 +442,25 @@ TEST_CASE("Intra node partitioning second case", "Intra node partitioning") {
     inp.access(0, addr0);
     inp.access(0, addr1);
     inp.access(0, addr2);
-    inp.access(0, addr3); //Evicts addr1, but not 0
+    inp.access(0, addr3);//Evicts addr1, but not 0
 
     REQUIRE(inp.misses(0) == 4);
     REQUIRE(inp.hits(0) == 0);
 
-    inp.access(0, addr0); //Hit
-    inp.access(0, addr2); //Hit
+    inp.access(0, addr0);//Hit
+    inp.access(0, addr2);//Hit
 
     REQUIRE(inp.misses(0) == 4);
     REQUIRE(inp.hits(0) == 2);
 
-    inp.access(0, addr1); //Miss, evicts address 3
+    inp.access(0, addr1);//Miss, evicts address 3
 
     REQUIRE(inp.misses(0) == 5);
 
     //Fill the rest of the cache sets with at least one value
-    inp.access(0, addr4); //Miss
-    inp.access(0, addr5); //Miss
-    inp.access(0, addr6); //Miss
+    inp.access(0, addr4);//Miss
+    inp.access(0, addr5);//Miss
+    inp.access(0, addr6);//Miss
 
     REQUIRE(inp.misses(0) == 8);
 
@@ -543,8 +542,8 @@ TEST_CASE("Inter node partitioning", "Inter node partitioning") {
 
     //Misses and evicts addr1 on node 1
     inp.access(0, addr4);
-    inp.access(0, addr2); //Hit
-    inp.access(0, addr1); //Miss
+    inp.access(0, addr2);//Hit
+    inp.access(0, addr1);//Miss
 
     REQUIRE(inp.misses(0) == 6);
     REQUIRE(inp.hits(0) == 5);
@@ -569,3 +568,183 @@ TEST_CASE("Inter node partitioning", "Inter node partitioning") {
     REQUIRE(inp.memory_nodes(2)[0].misses() == 1);
     REQUIRE(inp.memory_nodes(2)[0].hits() == 1);
 }
+
+TEST_CASE("Cluster partitioning input", "Cluster partitioning input") {
+    //More cores than available in the cluster
+    vector<vector<uint32_t>> coresPerClientPerCluster = {{5}, {0}, {0}, {0}};
+    //coresPerClientPerCluster[i][j] gives the number of cores client j has in cluster i
+
+    REQUIRE_THROWS(ClusterPartitioningNormal<WayPartitioning>(128, 8, 16, 4, coresPerClientPerCluster));
+
+    //Unequal number of clients
+    coresPerClientPerCluster = {{1, 1}, {0}, {0}, {0}};
+
+    REQUIRE_THROWS(ClusterPartitioningNormal<WayPartitioning>(128, 8, 16, 4, coresPerClientPerCluster));
+
+    //More cores than available in the cluster (2nd element)
+    coresPerClientPerCluster = {{1, 1, 1, 1}, {2, 2, 1, 0}, {1, 1, 1, 1}, {0, 0, 0, 0}};
+
+    REQUIRE_THROWS(ClusterPartitioningNormal<WayPartitioning>(128, 8, 16, 4, coresPerClientPerCluster));
+
+    //Number of clusters is not a power of two
+    coresPerClientPerCluster = {{1}, {0}, {0}, {0}, {0}};
+
+    REQUIRE_THROWS(ClusterPartitioningNormal<WayPartitioning>(128, 8, 16, 4, coresPerClientPerCluster));
+
+    //Ways cannot be equally divided among the clients
+    coresPerClientPerCluster = {{4, 0}, {2, 2}, {2, 0}, {0, 0}};
+
+    // client1 ->  6 / 16 * 4 does not yield a valid partitioning of ways
+    REQUIRE_THROWS(ClusterPartitioningNormal<WayPartitioning>(128, 4, 16, 4, coresPerClientPerCluster));
+}
+
+TEST_CASE("Cluster partitioning normal way", "Cluster partitioning normal") {
+    vector<vector<uint32_t>> coresPerClientPerCluster = {{2, 2}, {4, 0}, {2, 2}, {0, 0}};
+    //coresPerClientPerCluster[i][j] gives the number of cores client j has in cluster i
+
+    auto cpn = ClusterPartitioningNormal<WayPartitioning>(128, 4, 16, 4, coresPerClientPerCluster);
+
+    //We have three clients with a different distribution of cores among clusters
+    //Each cluster has two sets with four ways each
+    //In each cluster (all equal) client1 has
+
+    //Slice 0, index 0
+    uint32_t addr0 = 0;
+    uint32_t addr1 = 0b1000 << 4;
+
+    //Slice 0, index 1, different tags except for 4
+    uint32_t addr2 = 0b1101 << 4;
+    uint32_t addr3 = 0b0101 << 4;
+    uint32_t addr4 = 0b01011111;//Same as 3, different offset
+    uint32_t addr5 = 0b11101 << 4;
+
+    //Slice 1, index 0
+    uint32_t addr6 = 0b001 << 4;
+
+    //Slice 3, index0
+    uint32_t addr7 = 0b011 << 4;
+    uint32_t addr8 = 0b1011 << 4;
+    uint32_t addr9 = 0b11011 << 4;
+    uint32_t addr10 = 0b111011 << 4;
+    uint32_t addr11 = 0b1111011 << 4;
+
+    //Slice 2, index 1
+    uint32_t addr12 = 0b110 << 4;
+    uint32_t addr13 = 0b1110 << 4;
+
+    //Misses, let's fill the caches with some values
+    cpn.access(0, addr0);
+    cpn.access(0, addr1);
+    cpn.access(0, addr2);
+    cpn.access(0, addr3);
+
+    cpn.access(1, addr0);
+    REQUIRE_THROWS(cpn.access(2, addr1));
+
+    cpn.access(1, addr6);
+
+    cpn.access(0, addr7);
+    cpn.access(0, addr8);
+
+    cpn.access(0, addr12);
+    cpn.access(0, addr13);
+
+    REQUIRE(cpn.misses(0) == 8);
+    REQUIRE(cpn.misses(1) == 2);
+    REQUIRE(cpn.hits(0) == 0);
+    REQUIRE(cpn.hits(1) == 0);
+
+    cpn.access(0, addr4); //Hit
+    cpn.access(0, addr5); //Miss and eviction of 2
+    cpn.access(0, addr10); //Miss and eviction of 7
+    cpn.access(0, addr11); //Miss and eviction of 8
+    cpn.access(1, addr1); //Miss and eviction of 0
+
+    REQUIRE(cpn.misses(0) == 11);
+    REQUIRE(cpn.hits(0) == 1);
+
+    REQUIRE(cpn.misses(1) == 3);
+
+    //All hits, check whole cache state
+    cpn.access(0, addr0);
+    cpn.access(0, addr1);
+    cpn.access(0, addr5);
+    cpn.access(0, addr3);
+
+    cpn.access(0, addr12);
+    cpn.access(0, addr13);
+
+    cpn.access(0, addr10);
+    cpn.access(0, addr11);
+
+    cpn.access(1, addr6);
+    cpn.access(1, addr1);
+
+    REQUIRE(cpn.misses(0) == 11);
+    REQUIRE(cpn.hits(0) == 9);
+
+    REQUIRE(cpn.misses(1) == 3);
+    REQUIRE(cpn.hits(1) == 2);
+
+    REQUIRE(cpn.clusters()[0].misses(0) == 5);
+    REQUIRE(cpn.clusters()[1].misses(0) == 0);
+    REQUIRE(cpn.clusters()[2].misses(0) == 2);
+    REQUIRE(cpn.clusters()[3].misses(0) == 4);
+
+    REQUIRE(cpn.clusters()[0].misses(1) == 2);
+
+    REQUIRE(cpn.clusters()[0].hits(0) == 5);
+    REQUIRE(cpn.clusters()[1].hits(0) == 0);
+    REQUIRE(cpn.clusters()[2].hits(0) == 2);
+    REQUIRE(cpn.clusters()[3].hits(0) == 2);
+}
+
+//TEST_CASE("Cluster partitioning normal intra node", "Cluster partitioning normal") {
+//    vector<vector<uint32_t>> coresPerClientPerCluster = {{2, 1}, {4, 0}, {2, 2}, {0, 0}};
+//    //coresPerClientPerCluster[i][j] gives the number of cores client j has in cluster i
+//
+//    auto cpn = ClusterPartitioningNormal<IntraNodePartitioning>(64, 1, 16, 4, coresPerClientPerCluster);
+//
+//    //We have two clients with a different distribution of cores among clusters
+//    //Each cluster has four sets of one way each
+//
+//
+//    //Slice 0, index 0
+//    uint32_t addr0 = 0;
+//    uint32_t addr1 = 0b10000 << 4;
+//
+//    //Slice 0, index 1, different tags except for 4
+//    uint32_t addr2 = 0b10101 << 4;
+//    uint32_t addr3 = 0b00101 << 4;
+//    uint32_t addr4 = 0b010110111;//Same as 3, different offset
+//
+//    //Slice 1, index 0
+//    uint32_t addr6 = 0b0001 << 4;
+//
+//    //Slice 3, index0
+//    uint32_t addr7 = 0b0011 << 4;
+//
+//    //Slice 2, index 1
+//    uint32_t addr12 = 0b0110 << 4;
+//    uint32_t addr13 = 0b10110 << 4;
+//
+//    //Slice 1, index 2
+//    uint32_t addr14 = 0b1001 << 4;
+//
+//    //Slice 1 index 3
+//    uint32_t addr15 = 0b1101 << 4;
+//
+//    //Slice 0, index 3
+//    uint32_t addr16 = 0b1100 << 4;
+//
+//    //Misses, let's fill the caches with some values
+//    cpn.access(0, addr0);
+//    cpn.access(0, addr2);
+//    cpn.access(0, addr6);
+//    cpn.access(0, addr12);
+//    cpn.access(0, addr14);
+//    cpn.access(0, addr15);
+//
+//    cpn.access(1, addr14);
+//    REQUIRE_THROWS(cpn.access(2, addr1));
+//}
