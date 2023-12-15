@@ -64,12 +64,15 @@ public:
         };
     }
 
+    static bool is_power_of_2(uint64_t x) {
+        return (x & (x - 1)) == 0;
+    }
+
     // Used for debugging.
     bool exists(uintptr_t addr);
-//    void read(uintptr_t addr);
-//    void write(uintptr_t addr);
-    void access(uintptr_t addr);
-    void access(const LocationInfo& loc, uintptr_t addr);
+    bool access(uintptr_t addr);
+    // Returns if its a hit or not.
+    bool access(const LocationInfo& loc, uintptr_t addr);
     uint64_t cache_size() const noexcept;
     uint32_t sets() const noexcept;
     uint32_t block_size() const noexcept;

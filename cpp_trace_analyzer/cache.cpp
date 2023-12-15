@@ -17,6 +17,10 @@ Cache::Cache(uint64_t cache_size, uint32_t sets, uint32_t assoc, uint32_t block_
 Cache::Cache(uint64_t cache_size, uint32_t assoc, uint32_t block_size)
         : cache_size_(cache_size), block_size_(block_size), misses_(0), hits_(0) {
 
+    if (!Cache::is_power_of_2(cache_size)) {
+        throw std::invalid_argument("Cache size should be power of 2!");
+    }
+
     cache_.resize(compute_sets(assoc), CacheSet(assoc));
 
     if (cache_.empty() || (block_size * assoc > cache_size)) {
@@ -74,11 +78,13 @@ CacheSet::CacheSet(uint32_t assoc) : assoc_(assoc), lru_stats_(assoc), cache_lin
     }
 }
 
-void Cache::access(uintptr_t addr) {
-    access(Cache::compute_location_info(addr, block_size(), sets(), tag_bits()), addr);
+bool Cache::access(uintptr_t addr) {
+    return access(Cache::compute_location_info(addr, block_size(), sets(), tag_bits()), addr);
 }
 
-void Cache::access(const LocationInfo& loc, uintptr_t addr) {
+bool Cache::access(const LocationInfo& loc, uintptr_t addr) {
+    bool hit = false;
+
     try {
         assert(loc.set_index < sets());
         if (loc.set_index >= sets()) {
@@ -86,7 +92,7 @@ void Cache::access(const LocationInfo& loc, uintptr_t addr) {
         }
         auto &set = cache_[loc.set_index];
         int32_t way = -1;
-        for (size_t i = 0; i < set.associativity(); i++) {
+        for (int i = 0; i < set.associativity(); i++) {
             auto& cache_line = set.cache_line(i);
             if (cache_line.tag == loc.tag && cache_line.state == CacheLineState::VALID) {
                 way = i;
@@ -105,18 +111,18 @@ void Cache::access(const LocationInfo& loc, uintptr_t addr) {
             cache_line.tag = loc.tag;
             cache_line.addr = addr;
         } else {
+            hit = true;
             update_hits();
         }
 
-//        if (write) {
-//            cache_line.state = CacheLineState::DIRTY;
-//        }
-
         set.update_lru(way, true);
+
     }
     catch (const std::exception& ex) {
         std::cerr << ex.what() << std::endl;
     }
+
+    return hit;
 }
 
 uint32_t CacheSet::associativity() const noexcept {
