@@ -26,18 +26,13 @@ public:
     // the rest are information for LLC slice.
     InterNodePartitioning(uint64_t cache_size, uint32_t assoc, uint32_t block_size, const std::vector<uint32_t> &n_slices);
 
-
-    //    void read(uint32_t client_id, uintptr_t addr);
-    //    void write(uint32_t client_id, uintptr_t addr);
     void access(uint32_t client_id, uintptr_t addr);
     uint32_t misses(uint32_t client_id);
     uint32_t hits(uint32_t client_id);
     const std::vector<Cache> &memory_nodes(uint32_t client_id);
-
 private:
-    //    void access(uint32_t client_id, uintptr_t addr, bool write);
-
     // Memory node list per client.
+    // memory_nodes[i][j] = slice j of client i
     std::vector<std::vector<Cache>> memory_nodes_;
 };
 
@@ -65,138 +60,48 @@ private:
     std::vector<std::pair<uint32_t, uint32_t>> stats_;
 };
 
-template<class CacheClass>
-struct cluster_t {
+struct cluster_t_intra_node {
     // Each memory node of the cluster is managed using intra-node partitioning.
-    CacheClass cache;
-    // Cumulative sum
-    uint32_t c_sum;
+    WayPartitioning wp;
 };
 
-template<class CacheClass>
-class ClusterPartitioningProposal {
+class ClusterWayPartitioning {
 public:
-    ClusterPartitioningProposal(uint64_t cache_size, uint32_t assoc, uint32_t block_size,
-                                uint32_t totalCoresPerCluster,
-                                const std::vector<std::vector<uint32_t>> &coresPerClientPerCluster);
+    ClusterWayPartitioning(uint32_t n_clusters, uint64_t cache_size, uint32_t block_size, const std::vector<uint32_t> &n_ways);
 
-    //LOOK AT ME HERE!
-    //coresPerClientPerCluster[i][j] gives the number of cores client j has in cluster i
-    //You can deduce the number of clusters and clients from the vector size
-
-    //    void read(uint32_t client_id, uintptr_t addr);
-    //    void write(uint32_t client_id, uintptr_t addr);
+    // TODO(kostas): Remove slice id bits to avoid conflicts.
+    // n_clusters should be power of 2
     void access(uint32_t client_id, uintptr_t addr);
-    uint32_t misses(uint32_t client_id) const;
-    uint32_t hits(uint32_t client_id) const;
-    std::vector<CacheClass> &clusters();
-
 private:
-    // List of clusters per client.
-    std::vector<CacheClass> clusters_;
-    // Total number of cores the client owns.
-    uint32_t n_cores;
+    std::vector<cluster_t_intra_node> clusters_;
 };
 
-// TODO(kostas): Discuss with Luis how to initialize this.
-template<class CacheClass>
-ClusterPartitioningProposal<CacheClass>::ClusterPartitioningProposal(uint64_t cache_size, uint32_t assoc, uint32_t block_size,
-                                                                     uint32_t totalCoresPerCluster,
-                                                                     const std::vector<std::vector<uint32_t>> &coresPerClientPerCluster) {
-}
+struct inter_intra_aux_table_entry_t {
+    uint32_t cluster_id;
+    uint32_t cumulative_core_sum;
+};
 
-template<class CacheClass>
-void ClusterPartitioningProposal<CacheClass>::access(uint32_t client_id, uintptr_t addr) {
-    if (client_id >= clusters_.size()) {
-        throw std::invalid_argument("Invalid client_id given");
-    }
+struct inter_intra_aux_table_t {
+    uint32_t total_num_cores;
+    std::vector<inter_intra_aux_table_entry_t> entries;
+};
 
-    // Using block bits as page offset bits.
-    auto page_offset_bits = (uint32_t) std::log2(clusters_[0].inp_cache[0].cache().block_size());
-    // Node selection bits to represent number of clusters.
-    uint32_t node_selection_bits = bits_to_represent(clusters_.size());
-
-    // Node selection % cores.
-    auto node_selection = static_cast<uint32_t>((addr >> page_offset_bits) & Cache::mask(node_selection_bits)) % n_cores;
-    uint32_t cluster = 0;
-    for (size_t i = 0; i < clusters_.size(); i++) {
-        if (clusters_[i].c_sum >= node_selection) {
-            cluster = i;
-            break;
-        }
-    }
-
-    auto &inp_cache = clusters_[cluster].inp_cache;
-
-    inp_cache.access(client_id, addr);
-}
-
-template<class CacheClass>
-uint32_t ClusterPartitioningProposal<CacheClass>::misses(uint32_t client_id) const {
-    if (client_id >= clusters_.size()) {
-        throw std::invalid_argument("Invalid client_id given");
-    }
-
-    return clusters_[client_id].inp.misses(client_id);
-}
-
-template<class CacheClass>
-uint32_t ClusterPartitioningProposal<CacheClass>::hits(uint32_t client_id) const {
-    if (client_id >= clusters_.size()) {
-        throw std::invalid_argument("Invalid client_id given");
-    }
-
-    return clusters_[client_id].inp.hits(client_id);
-}
-
-template<class CacheClass>
-std::vector<CacheClass> &ClusterPartitioningProposal<CacheClass>::clusters() {
-    return clusters_;
-}
-
-template<class CacheClass>
-class ClusterPartitioningNormal {
+class InterIntraNodePartitioning {
 public:
-    ClusterPartitioningNormal(uint64_t cache_size, uint32_t assoc, uint32_t block_size,
-                              uint32_t totalCoresPerCluster,
-                              const std::vector<std::vector<uint32_t>> &coresPerClientPerCluster);
+    InterIntraNodePartitioning(uint32_t assoc, uint32_t block_size,
+                               // Size of cache size for each client.
+                               // n_cache_sizes[clusterId][client] -> Size of the private cache of that client
+                               const std::vector<std::vector<uint32_t>> &n_cache_sizes,
+                               // aux_tables_per_client[client] -> Auxiliary table for client
+                               std::vector<inter_intra_aux_table_t> aux_tables_per_client,
+                               // *maximum* number of bits to get after the set bits from right to left in order to do modulo and compare between cum_sum
+                               uint32_t max_bitwidth_slice_id_selection_bits
+                               );
 
-    //LOOK AT ME HERE!
-    //coresPerClientPerCluster[i][j] gives the number of cores client j has in cluster i
-
-    //    void read(uint32_t client_id, uintptr_t addr);
-    //    void write(uint32_t client_id, uintptr_t addr);
     void access(uint32_t client_id, uintptr_t addr);
-    uint32_t misses(uint32_t client_id) const;
-    uint32_t hits(uint32_t client_id) const;
-    std::vector<CacheClass> &clusters();
-
+    Cache& get_cache_slice(uint32_t client_id, uint32_t cluster_id);
 private:
-    // List of clusters per client.
-    std::vector<CacheClass> clusters_;
-    // Total number of cores the client owns.
-    uint32_t n_cores;
+    std::vector<inter_intra_aux_table_t> aux_tables_per_client_;
+    // inp[client] -> private portion of the cache for that client
+    std::vector<std::vector<Cache>> inp_;
 };
-template<class CacheClass>
-ClusterPartitioningNormal<CacheClass>::ClusterPartitioningNormal(uint64_t cache_size, uint32_t assoc, uint32_t block_size,
-                                                                 uint32_t totalCoresPerCluster,
-                                                                 const std::vector<std::vector<uint32_t>> &coresPerClientPerCluster) {
-}
-
-template<class CacheClass>
-std::vector<CacheClass> &ClusterPartitioningNormal<CacheClass>::clusters() {
-}
-
-template<class CacheClass>
-uint32_t ClusterPartitioningNormal<CacheClass>::hits(uint32_t client_id) const {
-    return 0;
-}
-
-template<class CacheClass>
-uint32_t ClusterPartitioningNormal<CacheClass>::misses(uint32_t client_id) const {
-    return 0;
-}
-
-template<class CacheClass>
-void ClusterPartitioningNormal<CacheClass>::access(uint32_t client_id, uintptr_t addr) {
-}

@@ -73,12 +73,6 @@ void InterNodePartitioning::access(uint32_t client_id, uintptr_t addr) {
     auto& slice = memory_node[node_selection % memory_node.size()];
 
     slice.access(Cache::compute_location_info(addr, slice.block_size(), slice.sets(), slice.tag_bits()), addr);
-
-//    if (write) {
-//        slice.write(addr);
-//    } else {
-//        slice.read(addr);
-//    }
 }
 
 
@@ -180,48 +174,47 @@ Cache &IntraNodePartitioning::cache() {
     return cache_;
 }
 
-// TODO(kostas): Discuss with Luis how to initialize this.
-ClusterPartitioning::ClusterPartitioning() {
-
-}
-
-void ClusterPartitioning::access(uint32_t client_id, uintptr_t addr) {
-    if (client_id >= clusters_.size()) {
-        throw std::invalid_argument("Invalid client_id given");
-    }
-
-    // Using block bits as page offset bits.
-    auto page_offset_bits = (uint32_t) std::log2(clusters_[0].inp_cache.cache().block_size());
-    // Node selection bits to represent number of clusters.
-    uint32_t node_selection_bits = bits_to_represent(clusters_.size());
-
-    // Node selection % cores.
-    auto node_selection = static_cast<uint32_t>((addr >> page_offset_bits) & Cache::mask(node_selection_bits)) % n_cores;
-    uint32_t cluster = 0;
-    for (size_t i = 0; i < clusters_.size(); i++) {
-        if (clusters_[i].c_sum >= node_selection) {
-            cluster = i;
-            break;
-        }
-    }
-
-    auto& inp_cache = clusters_[cluster].inp_cache;
-
-    inp_cache.access(client_id, addr);
-}
-
-uint32_t ClusterPartitioning::misses(uint32_t client_id) const {
-    if (client_id >= clusters_.size()) {
-        throw std::invalid_argument("Invalid client_id given");
-    }
-
-    return clusters_[client_id].inp_cache.misses(client_id);
-}
-
-uint32_t ClusterPartitioning::hits(uint32_t client_id) const {
-    if (client_id >= clusters_.size()) {
-        throw std::invalid_argument("Invalid client_id given");
-    }
-
-    return clusters_[client_id].inp_cache.hits(client_id);
-}
+//ClusterPartitioning::ClusterPartitioning() {
+//
+//}
+//
+//void ClusterPartitioning::access(uint32_t client_id, uintptr_t addr) {
+//    if (client_id >= clusters_.size()) {
+//        throw std::invalid_argument("Invalid client_id given");
+//    }
+//
+//    // Using block bits as page offset bits.
+//    auto page_offset_bits = (uint32_t) std::log2(clusters_[0].inp_cache.cache().block_size());
+//    // Node selection bits to represent number of clusters.
+//    uint32_t node_selection_bits = bits_to_represent(clusters_.size());
+//
+//    // Node selection % cores.
+//    auto node_selection = static_cast<uint32_t>((addr >> page_offset_bits) & Cache::mask(node_selection_bits)) % n_cores;
+//    uint32_t cluster = 0;
+//    for (size_t i = 0; i < clusters_.size(); i++) {
+//        if (clusters_[i].c_sum >= node_selection) {
+//            cluster = i;
+//            break;
+//        }
+//    }
+//
+//    auto& inp_cache = clusters_[cluster].inp_cache;
+//
+//    inp_cache.access(client_id, addr);
+//}
+//
+//uint32_t ClusterPartitioning::misses(uint32_t client_id) const {
+//    if (client_id >= clusters_.size()) {
+//        throw std::invalid_argument("Invalid client_id given");
+//    }
+//
+//    return clusters_[client_id].inp_cache.misses(client_id);
+//}
+//
+//uint32_t ClusterPartitioning::hits(uint32_t client_id) const {
+//    if (client_id >= clusters_.size()) {
+//        throw std::invalid_argument("Invalid client_id given");
+//    }
+//
+//    return clusters_[client_id].inp_cache.hits(client_id);
+//}
