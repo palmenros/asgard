@@ -96,7 +96,7 @@ public:
     Cache& get_cache_slice(uint32_t client_id, uint32_t cluster_id);
 private:
     std::vector<inter_intra_aux_table_t> aux_tables_per_client_;
-    // inp[client][cluster] -> Cache of that client has in cluster.
+    // inp[cluster][client] -> Cache of that client has in cluster.
     std::vector<std::vector<Cache>> inp_;
     // *maximum* number of bits to get after the set bits from right to left in order to do modulo and compare between cum_sum
     uint32_t max_bitwidth_;

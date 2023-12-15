@@ -246,18 +246,15 @@ InterIntraNodePartitioning::InterIntraNodePartitioning(uint32_t assoc, uint32_t 
         }
     }
 
-    inp_.resize(n_clients);
     uint32_t n_clusters = n_cache_sizes.size();
-    for (uint32_t client = 0; client < n_clients; client++) {
-        inp_[client].resize(n_clusters);
-    }
-
-    set_bits_ = 0;
-    for (size_t cluster = 0; cluster < n_clusters; cluster++) {
-        for (size_t client = 0; client < n_clients; client++) {
+    inp_.resize(n_clusters);
+    for (uint32_t cluster = 0; cluster < n_clusters; cluster++) {
+        uint32_t clients = n_cache_sizes[cluster].size();
+        inp_[cluster].resize(clients);
+        for (uint32_t client = 0; client < clients; client++) {
             if (n_cache_sizes[cluster][client] > 0) {
                 Cache cache(n_cache_sizes[cluster][client], assoc, block_size);
-                inp_[client][cluster] = cache;
+                inp_[cluster][client] = cache;
                 if (cache.sets() > set_bits_) {
                     set_bits_ = cache.sets();
                 }
@@ -287,13 +284,14 @@ void InterIntraNodePartitioning::access(uint32_t client_id, uintptr_t addr) {
     for (const auto& entry: aux_table.entries) {
         if (node_selection > entry.cumulative_core_sum) {
             cluster_id = entry.cluster_id;
+            break;
         }
     }
     assert(cluster_id < inp_.size());
 
     auto& cache = inp_[cluster_id][client_id];
     if (cache.cache_size() > 0) {
-        bool hit = inp_[cluster_id][client_id].access(addr);
+        bool hit = cache.access(addr);
         if (!hit) {
             stats_[client_id].first++;
         } else {
