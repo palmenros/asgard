@@ -569,44 +569,52 @@ TEST_CASE("Inter node partitioning", "Inter node partitioning") {
     REQUIRE(inp.memory_nodes(2)[0].hits() == 1);
 }
 
-TEST_CASE("Cluster partitioning input", "Cluster partitioning input") {
-    //More cores than available in the cluster
-    vector<vector<uint32_t>> coresPerClientPerCluster = {{5}, {0}, {0}, {0}};
-    //coresPerClientPerCluster[i][j] gives the number of cores client j has in cluster i
+//TEST_CASE("Cluster partitioning input", "Cluster partitioning input") {
+//    //More cores than available in the cluster
+//    vector<vector<uint32_t>> coresPerClientPerCluster = {{5}, {0}, {0}, {0}};
+//    //coresPerClientPerCluster[i][j] gives the number of cores client j has in cluster i
+//
+//    REQUIRE_THROWS(ClusterPartitioningNormal<WayPartitioning>(128, 8, 16, 4, coresPerClientPerCluster));
+//
+//    //Unequal number of clients
+//    coresPerClientPerCluster = {{1, 1}, {0}, {0}, {0}};
+//
+//    REQUIRE_THROWS(ClusterPartitioningNormal<WayPartitioning>(128, 8, 16, 4, coresPerClientPerCluster));
+//
+//    //More cores than available in the cluster (2nd element)
+//    coresPerClientPerCluster = {{1, 1, 1, 1}, {2, 2, 1, 0}, {1, 1, 1, 1}, {0, 0, 0, 0}};
+//
+//    REQUIRE_THROWS(ClusterPartitioningNormal<WayPartitioning>(128, 8, 16, 4, coresPerClientPerCluster));
+//
+//    //Number of clusters is not a power of two
+//    coresPerClientPerCluster = {{1}, {0}, {0}, {0}, {0}};
+//
+//    REQUIRE_THROWS(ClusterPartitioningNormal<WayPartitioning>(128, 8, 16, 4, coresPerClientPerCluster));
+//
+//    //Ways cannot be equally divided among the clients
+//    coresPerClientPerCluster = {{4, 0}, {2, 2}, {2, 0}, {0, 0}};
+//
+//    // client1 ->  6 / 16 * 4 does not yield a valid partitioning of ways
+//    REQUIRE_THROWS(ClusterPartitioningNormal<WayPartitioning>(128, 4, 16, 4, coresPerClientPerCluster));
+//}
 
-    REQUIRE_THROWS(ClusterPartitioningNormal<WayPartitioning>(128, 8, 16, 4, coresPerClientPerCluster));
+TEST_CASE("Cluster partitioning normal way input", "Cluster partitioning normal") {
+    //Too many ways, they do not fit in the cache
+    vector<uint32_t> n_ways = {2, 1, 1, 1, 4};
+    REQUIRE_THROWS(ClusterWayPartitioning(4, 128, 16, n_ways));
 
-    //Unequal number of clients
-    coresPerClientPerCluster = {{1, 1}, {0}, {0}, {0}};
-
-    REQUIRE_THROWS(ClusterPartitioningNormal<WayPartitioning>(128, 8, 16, 4, coresPerClientPerCluster));
-
-    //More cores than available in the cluster (2nd element)
-    coresPerClientPerCluster = {{1, 1, 1, 1}, {2, 2, 1, 0}, {1, 1, 1, 1}, {0, 0, 0, 0}};
-
-    REQUIRE_THROWS(ClusterPartitioningNormal<WayPartitioning>(128, 8, 16, 4, coresPerClientPerCluster));
-
-    //Number of clusters is not a power of two
-    coresPerClientPerCluster = {{1}, {0}, {0}, {0}, {0}};
-
-    REQUIRE_THROWS(ClusterPartitioningNormal<WayPartitioning>(128, 8, 16, 4, coresPerClientPerCluster));
-
-    //Ways cannot be equally divided among the clients
-    coresPerClientPerCluster = {{4, 0}, {2, 2}, {2, 0}, {0, 0}};
-
-    // client1 ->  6 / 16 * 4 does not yield a valid partitioning of ways
-    REQUIRE_THROWS(ClusterPartitioningNormal<WayPartitioning>(128, 4, 16, 4, coresPerClientPerCluster));
+    //Cluster number not a power of two
+    n_ways = {2, 1};
+    REQUIRE_THROWS(ClusterWayPartitioning(3, 128, 16, n_ways));
 }
 
 TEST_CASE("Cluster partitioning normal way", "Cluster partitioning normal") {
-    vector<vector<uint32_t>> coresPerClientPerCluster = {{2, 2}, {4, 0}, {2, 2}, {0, 0}};
-    //coresPerClientPerCluster[i][j] gives the number of cores client j has in cluster i
+    //Note that there is an unused way
+    vector<uint32_t> n_ways = {2, 1};
+    ClusterWayPartitioning cwp = ClusterWayPartitioning(4, 128, 16, n_ways);
 
-    auto cpn = ClusterPartitioningNormal<WayPartitioning>(128, 4, 16, 4, coresPerClientPerCluster);
-
-    //We have three clients with a different distribution of cores among clusters
+    //We have two clients with a different distribution of cores among clusters
     //Each cluster has two sets with four ways each
-    //In each cluster (all equal) client1 has
 
     //Slice 0, index 0
     uint32_t addr0 = 0;
@@ -633,118 +641,250 @@ TEST_CASE("Cluster partitioning normal way", "Cluster partitioning normal") {
     uint32_t addr13 = 0b1110 << 4;
 
     //Misses, let's fill the caches with some values
-    cpn.access(0, addr0);
-    cpn.access(0, addr1);
-    cpn.access(0, addr2);
-    cpn.access(0, addr3);
+    cwp.access(0, addr0);
+    cwp.access(0, addr1);
+    cwp.access(0, addr2);
+    cwp.access(0, addr3);
 
-    cpn.access(1, addr0);
-    REQUIRE_THROWS(cpn.access(2, addr1));
+    cwp.access(1, addr0);
+    REQUIRE_THROWS(cwp.access(2, addr1));
 
-    cpn.access(1, addr6);
+    cwp.access(1, addr6);
 
-    cpn.access(0, addr7);
-    cpn.access(0, addr8);
+    cwp.access(0, addr7);
+    cwp.access(0, addr8);
 
-    cpn.access(0, addr12);
-    cpn.access(0, addr13);
+    cwp.access(0, addr12);
+    cwp.access(0, addr13);
 
-    REQUIRE(cpn.misses(0) == 8);
-    REQUIRE(cpn.misses(1) == 2);
-    REQUIRE(cpn.hits(0) == 0);
-    REQUIRE(cpn.hits(1) == 0);
+    REQUIRE(cwp.misses(0) == 8);
+    REQUIRE(cwp.misses(1) == 2);
+    REQUIRE(cwp.hits(0) == 0);
+    REQUIRE(cwp.hits(1) == 0);
 
-    cpn.access(0, addr4); //Hit
-    cpn.access(0, addr5); //Miss and eviction of 2
-    cpn.access(0, addr10); //Miss and eviction of 7
-    cpn.access(0, addr11); //Miss and eviction of 8
-    cpn.access(1, addr1); //Miss and eviction of 0
+    cwp.access(0, addr4); //Hit
+    cwp.access(0, addr5); //Miss and eviction of 2
+    cwp.access(0, addr10);//Miss and eviction of 7
+    cwp.access(0, addr11);//Miss and eviction of 8
+    cwp.access(1, addr1); //Miss and eviction of 0
 
-    REQUIRE(cpn.misses(0) == 11);
-    REQUIRE(cpn.hits(0) == 1);
+    REQUIRE(cwp.misses(0) == 11);
+    REQUIRE(cwp.hits(0) == 1);
 
-    REQUIRE(cpn.misses(1) == 3);
+    REQUIRE(cwp.misses(1) == 3);
 
     //All hits, check whole cache state
-    cpn.access(0, addr0);
-    cpn.access(0, addr1);
-    cpn.access(0, addr5);
-    cpn.access(0, addr3);
+    cwp.access(0, addr0);
+    cwp.access(0, addr1);
+    cwp.access(0, addr5);
+    cwp.access(0, addr3);
 
-    cpn.access(0, addr12);
-    cpn.access(0, addr13);
+    cwp.access(0, addr12);
+    cwp.access(0, addr13);
 
-    cpn.access(0, addr10);
-    cpn.access(0, addr11);
+    cwp.access(0, addr10);
+    cwp.access(0, addr11);
 
-    cpn.access(1, addr6);
-    cpn.access(1, addr1);
+    cwp.access(1, addr6);
+    cwp.access(1, addr1);
 
-    REQUIRE(cpn.misses(0) == 11);
-    REQUIRE(cpn.hits(0) == 9);
+    REQUIRE(cwp.misses(0) == 11);
+    REQUIRE(cwp.hits(0) == 9);
 
-    REQUIRE(cpn.misses(1) == 3);
-    REQUIRE(cpn.hits(1) == 2);
+    REQUIRE(cwp.misses(1) == 3);
+    REQUIRE(cwp.hits(1) == 2);
 
-    REQUIRE(cpn.clusters()[0].misses(0) == 5);
-    REQUIRE(cpn.clusters()[1].misses(0) == 0);
-    REQUIRE(cpn.clusters()[2].misses(0) == 2);
-    REQUIRE(cpn.clusters()[3].misses(0) == 4);
+    REQUIRE(cwp.clusters()[0].misses(0) == 5);
+    REQUIRE(cwp.clusters()[1].misses(0) == 0);
+    REQUIRE(cwp.clusters()[2].misses(0) == 2);
+    REQUIRE(cwp.clusters()[3].misses(0) == 4);
 
-    REQUIRE(cpn.clusters()[0].misses(1) == 2);
+    REQUIRE(cwp.clusters()[0].misses(1) == 2);
 
-    REQUIRE(cpn.clusters()[0].hits(0) == 5);
-    REQUIRE(cpn.clusters()[1].hits(0) == 0);
-    REQUIRE(cpn.clusters()[2].hits(0) == 2);
-    REQUIRE(cpn.clusters()[3].hits(0) == 2);
+    REQUIRE(cwp.clusters()[0].hits(0) == 5);
+    REQUIRE(cwp.clusters()[1].hits(0) == 0);
+    REQUIRE(cwp.clusters()[2].hits(0) == 2);
+    REQUIRE(cwp.clusters()[3].hits(0) == 2);
 }
 
-//TEST_CASE("Cluster partitioning normal intra node", "Cluster partitioning normal") {
-//    vector<vector<uint32_t>> coresPerClientPerCluster = {{2, 1}, {4, 0}, {2, 2}, {0, 0}};
-//    //coresPerClientPerCluster[i][j] gives the number of cores client j has in cluster i
-//
-//    auto cpn = ClusterPartitioningNormal<IntraNodePartitioning>(64, 1, 16, 4, coresPerClientPerCluster);
-//
-//    //We have two clients with a different distribution of cores among clusters
-//    //Each cluster has four sets of one way each
-//
-//
-//    //Slice 0, index 0
-//    uint32_t addr0 = 0;
-//    uint32_t addr1 = 0b10000 << 4;
-//
-//    //Slice 0, index 1, different tags except for 4
-//    uint32_t addr2 = 0b10101 << 4;
-//    uint32_t addr3 = 0b00101 << 4;
-//    uint32_t addr4 = 0b010110111;//Same as 3, different offset
-//
-//    //Slice 1, index 0
-//    uint32_t addr6 = 0b0001 << 4;
-//
-//    //Slice 3, index0
-//    uint32_t addr7 = 0b0011 << 4;
-//
-//    //Slice 2, index 1
-//    uint32_t addr12 = 0b0110 << 4;
-//    uint32_t addr13 = 0b10110 << 4;
-//
-//    //Slice 1, index 2
-//    uint32_t addr14 = 0b1001 << 4;
-//
-//    //Slice 1 index 3
-//    uint32_t addr15 = 0b1101 << 4;
-//
-//    //Slice 0, index 3
-//    uint32_t addr16 = 0b1100 << 4;
-//
-//    //Misses, let's fill the caches with some values
-//    cpn.access(0, addr0);
-//    cpn.access(0, addr2);
-//    cpn.access(0, addr6);
-//    cpn.access(0, addr12);
-//    cpn.access(0, addr14);
-//    cpn.access(0, addr15);
-//
-//    cpn.access(1, addr14);
-//    REQUIRE_THROWS(cpn.access(2, addr1));
-//}
+TEST_CASE("Inter-intra node partitioning input", "Inter-intra node partitioning") {
+    //Non divisible number of rows
+    vector<vector<uint32_t>> cache_sizes = {{60, 64, 0}, {64, 32, 32}, {0, 0, 128}, {32, 32, 32}};
+    vector<inter_intra_aux_table_t> aux_table = {
+            {5, {{0, 1}, {1, 3}, {3, 4}}},
+            {4, {{0, 1}, {1, 2}, {3, 3}}},
+            {6, {{1, 0}, {2, 4}, {3, 5}}}};
+    REQUIRE_THROWS(InterIntraNodePartitioning(2, 16,cache_sizes,aux_table,4));
+
+    //Invalid number of clients
+    cache_sizes = {{64, 64, 0, 0}, {64, 32, 32}, {0, 0, 128}, {32, 32, 32}};
+    REQUIRE_THROWS(InterIntraNodePartitioning(2, 16,cache_sizes,aux_table,4));
+
+    //Invalid number of clients between cache sizes and aux table
+    cache_sizes = {{64, 64, 0}, {64, 32, 32}, {0, 0, 128}, {32, 32, 32}};
+    aux_table = {
+            {5, {{0, 1}, {1, 3}, {3, 4}}},
+            {4, {{0, 1}, {1, 2}, {3, 3}}},
+            {6, {{1, 0}, {2, 4}, {3, 5}}},
+            {6, {{1, 0}, {2, 4}, {3, 5}}}};
+    REQUIRE_THROWS(InterIntraNodePartitioning(2, 16,cache_sizes,aux_table,4));
+}
+
+uint32_t createAddressIntraInterFirstCluster(uint32_t after_tag, uint32_t slice, uint32_t index, uint32_t offset) {
+    //Get the maximal values and no more (avoid mistakes)
+    slice = slice & 0b1111;
+    index = index & 0b1;
+    offset = offset & 0b1111;
+    return (after_tag << 9) | (slice << 5) | (index << 4) | offset;
+}
+
+uint32_t createAddressIntraInterSecondCluster(uint32_t after_tag, uint32_t slice, uint32_t index, uint32_t offset) {
+    //Get the maximal values and no more (avoid mistakes)
+    slice = slice & 0b1111;
+    index = index & 0b11;
+    offset = offset & 0b1111;
+    return (after_tag << 9) | (slice << 5) | (index << 4) | offset;
+}
+
+uint32_t createAddressIntraInterThirdCluster(uint32_t after_tag, uint32_t slice, uint32_t index, uint32_t offset) {
+    //Get the maximal values and no more (avoid mistakes)
+    slice = slice & 0b1111;
+    offset = offset & 0b1111;
+    return (after_tag << 8) | (slice << 4) | offset;
+}
+
+TEST_CASE("Inter-intra node partitioning", "Inter-intra node partitioning") {
+    //We have three clients with unequal distributions. Note that the last cluster has an unused row!
+    vector<vector<uint32_t>> cache_sizes = {{64, 64, 0}, {64, 32, 32}, {0, 0, 128}, {32, 32, 32}};
+    vector<inter_intra_aux_table_t> aux_table = {
+            {5, {{0, 1}, {1, 3}, {3, 4}}},
+            {4, {{0, 1}, {1, 2}, {3, 3}}},
+            {6, {{1, 0}, {2, 4}, {3, 5}}}};
+    auto inp = InterIntraNodePartitioning(2, 16,
+                               cache_sizes,
+                               aux_table,
+                               4);
+
+    //We have 4 clusters, with caches with 4 sets each and assoc 2.
+
+    uint32_t addr0 = createAddressIntraInterFirstCluster(0, 0, 0, 0);
+    uint32_t addr1 = createAddressIntraInterFirstCluster(1, 0, 0, 0);
+    uint32_t addr2 = createAddressIntraInterFirstCluster(0, 0, 1, 0);
+    uint32_t addr3 = createAddressIntraInterFirstCluster(1, 0, 1, 0);
+    uint32_t addr4 = createAddressIntraInterFirstCluster(2, 0, 1, 0);
+    uint32_t addr5 = createAddressIntraInterFirstCluster(1, 0, 1, 4);
+
+    uint32_t addr6 = createAddressIntraInterFirstCluster(0, 6, 0, 0);
+    uint32_t addr7 = createAddressIntraInterFirstCluster(1, 5, 0, 0);
+
+    uint32_t addr8 = createAddressIntraInterSecondCluster(0, 2, 4, 0);
+    uint32_t addr9 = createAddressIntraInterSecondCluster(1, 3, 4, 0);
+    uint32_t addr10 = createAddressIntraInterSecondCluster(2, 8, 4, 0);
+    uint32_t addr11 = createAddressIntraInterSecondCluster(3, 0, 4, 4);
+
+    uint32_t addr12 = createAddressIntraInterThirdCluster(0, 4, 0, 0);
+    uint32_t addr13 = createAddressIntraInterThirdCluster(1, 9, 0, 0);
+    uint32_t addr14 = createAddressIntraInterThirdCluster(2, 9, 0, 0);
+
+    uint32_t addr15 = createAddressIntraInterThirdCluster(0, 3, 0, 0);
+    uint32_t addr16 = createAddressIntraInterThirdCluster(1, 7, 0, 0);
+    uint32_t addr17 = createAddressIntraInterThirdCluster(2, 7, 0, 0);
+
+    uint32_t addr18 = createAddressIntraInterThirdCluster(0, 5, 0, 0);
+    uint32_t addr19 = createAddressIntraInterThirdCluster(1, 11, 0, 0);
+    uint32_t addr20 = createAddressIntraInterThirdCluster(2, 17, 0, 0);
+
+    //All misses, let's fill the caches
+    inp.access(0, addr0);
+    inp.access(0, addr1);
+    inp.access(0, addr2);
+    inp.access(0, addr3);
+
+    inp.access(1, addr0);
+    inp.access(1, addr1);
+    inp.access(1, addr2);
+    inp.access(1, addr3);
+
+    inp.access(2, addr8);
+    inp.access(2, addr9);
+
+    inp.access(0, addr12);
+    inp.access(1, addr15);
+    inp.access(2, addr18);
+
+    inp.access(0, addr13);
+    inp.access(1, addr16);
+    inp.access(2, addr19);
+
+    REQUIRE(inp.misses(0) == 6);
+    REQUIRE(inp.misses(1) == 6);
+    REQUIRE(inp.misses(2) == 4);
+
+    inp.access(0, addr5); //Hit
+
+    inp.access(0, addr4); //Miss + evict 2
+    inp.access(1, addr4); //Miss + evict 2
+
+    inp.access(0, addr6); //Miss + evict 3
+    inp.access(0, addr4); //Hit
+    inp.access(0, addr7); //Miss + evict 6
+
+    //All hits
+    inp.access(0, addr4);
+    inp.access(0, addr7);
+    inp.access(1, addr4);
+    inp.access(1, addr3);
+
+    REQUIRE(inp.misses(0) == 9);
+    REQUIRE(inp.misses(1) == 7);
+
+    REQUIRE(inp.hits(0) == 4);
+    REQUIRE(inp.hits(1) == 2);
+
+    REQUIRE(inp.get_cache_slice(0, 0).misses() == 7);
+    REQUIRE(inp.get_cache_slice(1, 0).misses() == 5);
+    REQUIRE(inp.get_cache_slice(2, 2).misses() == 2);
+    REQUIRE(inp.get_cache_slice(2, 3).misses() == 2);
+    REQUIRE(inp.get_cache_slice(1, 3).misses() == 2);
+    REQUIRE(inp.get_cache_slice(0, 3).misses() == 2);
+
+    REQUIRE(inp.get_cache_slice(0, 0).hits() == 4);
+    REQUIRE(inp.get_cache_slice(1, 0).hits() == 2);
+
+    //Hit and evict and call again 8 and 9
+    inp.access(2, addr8);
+    inp.access(2, addr9);
+
+    inp.access(2, addr10);
+    inp.access(2, addr11);
+
+    inp.access(2, addr8);
+    inp.access(2, addr9);
+
+    REQUIRE(inp.get_cache_slice(2, 2).misses() == 6);
+    REQUIRE(inp.get_cache_slice(2, 2).hits() == 2);
+
+    REQUIRE(inp.hits(2) == 2);
+    REQUIRE(inp.misses(2) == 8);
+
+    //Misses + Evictions
+    inp.access(0, addr14);
+    inp.access(1, addr17);
+    inp.access(2, addr20);
+
+    //Hits
+    inp.access(0, addr13);
+    inp.access(1, addr16);
+    inp.access(2, addr19);
+
+    REQUIRE(inp.get_cache_slice(0, 3).misses() == 3);
+    REQUIRE(inp.get_cache_slice(1, 3).misses() == 3);
+    REQUIRE(inp.get_cache_slice(2, 3).misses() == 3);
+
+    REQUIRE(inp.get_cache_slice(0, 3).hits() == 1);
+    REQUIRE(inp.get_cache_slice(1, 3).hits() == 1);
+    REQUIRE(inp.get_cache_slice(2, 3).hits() == 1);
+
+    REQUIRE(inp.hits(2) == 3);
+    REQUIRE(inp.misses(2) == 9);
+}
