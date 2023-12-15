@@ -72,6 +72,9 @@ public:
     // TODO(kostas): Remove slice id bits to avoid conflicts.
     // n_clusters should be power of 2
     void access(uint32_t client_id, uintptr_t addr);
+    uint32_t misses(uint32_t client_id) const;
+    uint32_t hits(uint32_t client_id) const;
+    std::vector<WayPartitioning> &clusters();
 private:
     std::vector<cluster_t_intra_node> clusters_;
 };
@@ -100,6 +103,8 @@ public:
                                );
 
     void access(uint32_t client_id, uintptr_t addr);
+    uint32_t misses(uint32_t client_id) const;
+    uint32_t hits(uint32_t client_id) const;
     Cache& get_cache_slice(uint32_t client_id, uint32_t cluster_id);
 private:
     std::vector<inter_intra_aux_table_t> aux_tables_per_client_;
