@@ -30,7 +30,7 @@ Cache::Cache(uint64_t cache_size, uint32_t assoc, uint32_t block_size)
     auto block_bits = (uint32_t) std::log2(block_size);
     auto set_bits = (uint32_t) std::log2(cache_.size());
 
-    tag_bits_ = 64 - set_bits - block_bits;
+    tag_bits_ = ADDRESS_SIZE - set_bits - block_bits;
 }
 
 uint64_t Cache::cache_size() const noexcept {

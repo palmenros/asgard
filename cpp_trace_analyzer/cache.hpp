@@ -5,6 +5,8 @@
 #include <cstdlib>
 #include <vector>
 
+constexpr uint32_t ADDRESS_SIZE = sizeof(uintptr_t) * 8;
+
 enum class CacheLineState {
     VALID,
     INVALID
