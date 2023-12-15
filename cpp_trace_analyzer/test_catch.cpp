@@ -593,10 +593,10 @@ TEST_CASE("Cluster partitioning normal way", "Cluster partitioning normal") {
     uint32_t addr1 = 0b1000 << 4;
 
     //Slice 0, index 1, different tags except for 4
-    uint32_t addr2 = 0b1101 << 4;
-    uint32_t addr3 = 0b0101 << 4;
-    uint32_t addr4 = 0b01011111;//Same as 3, different offset
-    uint32_t addr5 = 0b11101 << 4;
+    uint32_t addr2 = 0b1100 << 4;
+    uint32_t addr3 = 0b0100 << 4;
+    uint32_t addr4 = 0b01001111;//Same as 3, different offset
+    uint32_t addr5 = 0b11100 << 4;
 
     //Slice 1, index 0
     uint32_t addr6 = 0b001 << 4;
@@ -619,8 +619,6 @@ TEST_CASE("Cluster partitioning normal way", "Cluster partitioning normal") {
     cwp.access(0, addr3);
 
     cwp.access(1, addr0);
-    // TODO(kostas-to-luis): Check me!
-//    REQUIRE_THROWS(cwp.access(2, addr1));
 
     cwp.access(1, addr6);
 
@@ -649,8 +647,8 @@ TEST_CASE("Cluster partitioning normal way", "Cluster partitioning normal") {
     //All hits, check whole cache state
     cwp.access(0, addr0);
     cwp.access(0, addr1);
-    cwp.access(0, addr5);
     cwp.access(0, addr3);
+    cwp.access(0, addr5);
 
     cwp.access(0, addr12);
     cwp.access(0, addr13);
@@ -668,16 +666,16 @@ TEST_CASE("Cluster partitioning normal way", "Cluster partitioning normal") {
     REQUIRE(cwp.hits(1) == 2);
 
     // TODO(kostas-to-luis): Check me!
-//    REQUIRE(cwp.clusters()[0].misses(0) == 5);
-//    REQUIRE(cwp.clusters()[1].misses(0) == 0);
+    REQUIRE(cwp.clusters()[0].misses(0) == 5);
+    REQUIRE(cwp.clusters()[1].misses(0) == 0);
     REQUIRE(cwp.clusters()[2].misses(0) == 2);
     REQUIRE(cwp.clusters()[3].misses(0) == 4);
 
     REQUIRE(cwp.clusters()[0].misses(1) == 2);
 
     // TODO(kostas-to-luis): Check me!
-//    REQUIRE(cwp.clusters()[0].hits(0) == 5);
-//    REQUIRE(cwp.clusters()[1].hits(0) == 0);
+    REQUIRE(cwp.clusters()[0].hits(0) == 5);
+    REQUIRE(cwp.clusters()[1].hits(0) == 0);
     REQUIRE(cwp.clusters()[2].hits(0) == 2);
     REQUIRE(cwp.clusters()[3].hits(0) == 2);
 }
