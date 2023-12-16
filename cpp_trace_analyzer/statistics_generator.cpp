@@ -320,7 +320,7 @@ void inter_vs_cluster_way_partitioning_vs_inter_intra() {
     Cache L1 {64* KiB, 4, block_size};
 
     // System with 8 clusters. Each cluster has only one core.
-    // Client 0 (our client) only has cores in
+    // Client 0 (our client) only has cores in num_slices_our_client_has of them (see below test function)
     uint32_t num_clusters = 8;
 
     // Size of a single slice
@@ -455,6 +455,113 @@ void inter_vs_cluster_way_partitioning_vs_inter_intra() {
 void access_uniformity_way_vs_inter_intra() {
     header("Access uniformity way vs inter-intra...");
 
+    std::ifstream graph_trace;
+    load_trace("qemu_graph_trace", graph_trace);
+
+    // Test-case:
+    //  8 clusters, each cluster with 2 cores
+    //  The client has 3 cores (2 in one cluster, 1 in another cluster)
+    //  Compare the distribution of access between Cluster Way Partitioning and Inter-Intra node partitioning
+
+
+    uint32_t block_size = 64;
+
+    // L1: 64KB, 4-way, 64-byte blocks
+    Cache L1 {64* KiB, 4, block_size};
+
+    // Size of a single slice
+    std::vector<uint32_t> sizes = {2*MiB, 4*MiB, 8*MiB, 16*MiB, 32*MiB, 64*MiB, 128*MiB};
+
+    // BE CAREFUL! Updating this parameters may require manually updating some of the tables below.
+    uint32_t num_clusters = 8;
+    uint32_t cores_per_cluster = 2;
+    uint32_t cores_owned_by_us = 3;
+    uint32_t num_cores = num_clusters * cores_per_cluster;
+
+    // Cluster way partitioning
+
+    std::vector<uint32_t> n_ways = {cores_owned_by_us, num_clusters * cores_per_cluster - cores_owned_by_us};
+
+    std::vector<MultiLevelCache<ClusterWayPartitioning>> way_partitioned_caches;
+    way_partitioned_caches.reserve(sizes.size());
+    for(auto size : sizes) {
+        // TODO: Is cache-size per slice?
+        way_partitioned_caches.emplace_back(num_cores, L1, ClusterWayPartitioning{num_clusters, size, block_size, n_ways});
+    }
+
+
+    // Inter-intra node partitioning
+
+    std::vector<MultiLevelCache<InterIntraNodePartitioning>> inter_intra_node_caches;
+    inter_intra_node_caches.reserve(sizes.size());
+    for(auto size: sizes) {
+        uint32_t cache_slice_size = size;
+        ASSERT(cache_slice_size % 2 == 0);
+
+        // n_cache_sizes[clusterId][client] -> Size of the private cache of that client
+        std::vector<std::vector<uint32_t>> n_cache_sizes(num_clusters, std::vector<uint32_t>(2, 0));
+        n_cache_sizes[0][0] = cache_slice_size;
+        n_cache_sizes[1][0] = cache_slice_size / 2;
+
+
+        std::vector<inter_intra_aux_table_entry_t> own_slices = {
+                {0, 2},
+                {1, 3},
+        };
+
+
+        std::vector<inter_intra_aux_table_entry_t> other_slices = {
+                {1, 1},
+                {2, 3},
+                {3, 5},
+                {4, 7},
+                {5, 9},
+                {6, 11},
+                {7, 13},
+        };
+
+        std::vector<inter_intra_aux_table_t> aux_tables_per_client = {
+                inter_intra_aux_table_t{3, own_slices},
+                inter_intra_aux_table_t{13, other_slices}
+        };
+
+        auto shared_cache = InterIntraNodePartitioning{num_clusters * cores_per_cluster, block_size, n_cache_sizes, aux_tables_per_client};
+        inter_intra_node_caches.emplace_back(num_cores, L1, std::move(shared_cache));
+    }
+
+
+    size_t num_accesses = 0;
+    for_each_trace_line(graph_trace, [&](uintptr_t addr, uintptr_t cpu_index, uint32_t is_store){
+        //            std::cout << num_accesses << "/" << expected_num_accesses << std::endl;
+        num_accesses++;
+
+        for(auto& cache: way_partitioned_caches) {
+            cache.access(cpu_index,0, addr);
+        }
+
+        // TODO: Enable after inter_intra_node_caches works properly
+        for(auto& cache: inter_intra_node_caches) {
+            cache.access(cpu_index,0, addr);
+        }
+    });
+
+    std::cout << "Cache slice sizes: " << sizes << std::endl;
+
+    auto way_partitioned_misses = getMisses(way_partitioned_caches);
+    std::cout << "Way Partition Misses: " << way_partitioned_misses << std::endl;
+
+    auto intra_node_misses = getMisses(inter_intra_node_caches);
+    std::cout << "Inter-Intra Node Misses: " << intra_node_misses << std::endl;
+
+    auto way_partitioned_accesses = getWayPartitionedNumAccesses(way_partitioned_caches);
+    std::cout << "Way Partition Accesses: " << way_partitioned_accesses << std::endl;
+
+    auto intra_node_accesses = getInterIntraNumAccesses(inter_intra_node_caches, num_clusters);
+    std::cout << "Inter-Intra Node Accesses: " << intra_node_accesses << std::endl;
+
+
+    std::cout << "Analyzed " << num_accesses << " accesses" << std::endl;
+
 }
 
 void separate_trace_file_per_core() {
@@ -496,6 +603,7 @@ void generate_stats() {
 //    multiple_private_cache_sizes();
 //    multiple_private_cache_assocs();
 //    intra_vs_way_partitioning();
+//    inter_vs_cluster_way_partitioning_vs_inter_intra();
 
-    inter_vs_cluster_way_partitioning_vs_inter_intra();
+    access_uniformity_way_vs_inter_intra();
 }
