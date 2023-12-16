@@ -252,7 +252,8 @@ InterIntraNodePartitioning::InterIntraNodePartitioning(uint32_t assoc, uint32_t 
 
     uint32_t n_clusters = n_cache_sizes.size();
     inp_.resize(n_clusters);
-    set_bits_ = 0;
+    uint32_t max_num_sets = 0;
+
     for (uint32_t cluster = 0; cluster < n_clusters; cluster++) {
         uint32_t clients = n_cache_sizes[cluster].size();
         inp_[cluster].resize(clients);
@@ -260,12 +261,14 @@ InterIntraNodePartitioning::InterIntraNodePartitioning(uint32_t assoc, uint32_t 
             if (n_cache_sizes[cluster][client] > 0) {
                 Cache cache(n_cache_sizes[cluster][client], assoc, block_size);
                 inp_[cluster][client] = cache;
-                if (cache.sets() > set_bits_) {
-                    set_bits_ = cache.sets();
+                if (cache.sets() > max_num_sets) {
+                    max_num_sets = cache.sets();
                 }
             }
         }
     }
+
+    set_bits_ = (uint32_t) std::log2(max_num_sets);
 
     aux_tables_per_client_ = aux_tables_per_client;
     block_size_ = block_size;
@@ -280,7 +283,6 @@ bool InterIntraNodePartitioning::access(uint32_t client_id, uintptr_t addr) {
     // Get the node selection bits (after set_index).
     auto block_offset_bits = (uint32_t) std::log2(block_size_);
     auto node_selection_bits = ADDRESS_SIZE - (block_offset_bits + set_bits_);
-    // TODO: I think thehre are some problems here with node_selection_bits
 
     auto node_selection = (addr >> (block_offset_bits + set_bits_)) & Cache::mask(node_selection_bits);
 
@@ -288,7 +290,7 @@ bool InterIntraNodePartitioning::access(uint32_t client_id, uintptr_t addr) {
     auto& aux_table = aux_tables_per_client_[client_id];
     node_selection %= aux_table.total_num_cores;
     for (const auto& entry: aux_table.entries) {
-        if (node_selection >= entry.cumulative_core_sum) {
+        if (entry.cumulative_core_sum > node_selection ) {
             cluster_id = entry.cluster_id;
             break;
         }

@@ -69,7 +69,7 @@ std::ostream& operator<< (std::ostream& out, const std::vector<T>& v) {
 void header(const std::string& str) {
     static uint32_t counter = 0;
     counter++;
-    std::cout << "[" << counter << "] " << str << std::endl;
+    std::cout << "\n[" << counter << "] " << str << "\n" << std::endl;
 }
 
 constexpr uint32_t KiB = 1024;
@@ -374,7 +374,7 @@ void inter_vs_cluster_way_partitioning_vs_inter_intra() {
             std::vector<std::vector<uint32_t>> n_cache_sizes(num_clusters, std::vector<uint32_t>(2, 0));
 
             std::vector<inter_intra_aux_table_entry_t> own_slices;
-            own_slices.reserve(num_slices_our_client_has);
+            own_slices.resize(num_slices_our_client_has);
 
             uint32_t slice_id = 0;
             for(slice_id = 0; slice_id < num_slices_our_client_has; ++slice_id) {
@@ -385,7 +385,7 @@ void inter_vs_cluster_way_partitioning_vs_inter_intra() {
             }
 
             std::vector<inter_intra_aux_table_entry_t> other_slices;
-            other_slices.reserve(num_clusters - num_slices_our_client_has);
+            other_slices.resize(num_clusters - num_slices_our_client_has);
 
             for(uint32_t i = 0; i < num_clusters - num_slices_our_client_has; ++i) {
                 other_slices[i] = inter_intra_aux_table_entry_t {
@@ -403,9 +403,6 @@ void inter_vs_cluster_way_partitioning_vs_inter_intra() {
             inter_intra_node_caches.emplace_back(num_cores, L1, std::move(shared_cache));
         }
 
-        // TODO: Remove me
-        size_t expected_num_accesses = 6895840;
-
         size_t num_accesses = 0;
         for_each_trace_line(graph_trace, [&](uintptr_t addr, uintptr_t cpu_index, uint32_t is_store){
 //            std::cout << num_accesses << "/" << expected_num_accesses << std::endl;
@@ -419,10 +416,10 @@ void inter_vs_cluster_way_partitioning_vs_inter_intra() {
                 cache.access(cpu_index,0, addr);
             }
 
-            // TODO: Enable after inter_intra_node_caches work properly
-//            for(auto& cache: inter_intra_node_caches) {
-//                cache.access(cpu_index,0, addr);
-//            }
+            // TODO: Enable after inter_intra_node_caches works properly
+            for(auto& cache: inter_intra_node_caches) {
+                cache.access(cpu_index,0, addr);
+            }
         });
 
         std::cout << "Cache slice sizes: " << sizes << std::endl;
@@ -452,6 +449,12 @@ void inter_vs_cluster_way_partitioning_vs_inter_intra() {
     test(1);
 //    test(2);
 //    test(4);
+    test(8);
+}
+
+void access_uniformity_way_vs_inter_intra() {
+    header("Access uniformity way vs inter-intra...");
+
 }
 
 void separate_trace_file_per_core() {
