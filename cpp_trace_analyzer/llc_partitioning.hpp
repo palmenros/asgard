@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <bitset>
 
 #include "cache.hpp"
 
@@ -106,3 +107,58 @@ private:
     // Hits/Misses per client.
     std::vector<std::pair<uint32_t, uint32_t>> stats_;
 };
+
+template <class L2Cache>
+class MultiLevelCache {
+public:
+    // private_cache is a per-client cache. It will be copied for each core
+    MultiLevelCache(uint32_t num_cores, const Cache& private_cache, L2Cache shared_cache);
+
+    // Returns true if hits in either L1 or L2
+    bool access(uint32_t core_id, uint32_t client_id, uintptr_t addr);
+
+    Cache& get_private_cache(uint32_t core_id);
+
+    L2Cache& get_shared_cache();
+
+    // returns the number of misses in the L2 cache
+    [[nodiscard]] uint32_t misses() const;
+
+private:
+    std::vector<Cache> private_caches_;
+    L2Cache shared_cache_;
+};
+
+template<class L2Cache>
+uint32_t MultiLevelCache<L2Cache>::misses() const {
+    return shared_cache_.misses();
+}
+
+template<class L2Cache>
+bool MultiLevelCache<L2Cache>::access(uint32_t core_id, uint32_t client_id, uintptr_t addr) {
+    auto& private_cache = get_private_cache(core_id);
+    bool hit = private_cache.access(addr);
+
+    if (hit) {
+        return true;
+    }
+
+    // We didn't hit in L1, try in shared L2
+    return shared_cache_.access(client_id, addr);
+}
+
+template<class L2Cache>
+Cache &MultiLevelCache<L2Cache>::get_private_cache(uint32_t core_id) {
+    return private_caches_.at(core_id);
+}
+
+template<class L2Cache>
+L2Cache &MultiLevelCache<L2Cache>::get_shared_cache() {
+    return shared_cache_;
+}
+
+template<class L2Cache>
+MultiLevelCache<L2Cache>::MultiLevelCache(uint32_t num_cores, const Cache& private_cache, L2Cache shared_cache)
+    : shared_cache_(std::move(shared_cache)), private_caches_(num_cores, private_cache)
+{
+}

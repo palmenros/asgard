@@ -184,3 +184,7 @@ bool Cache::exists(uintptr_t addr) {
 
     return false;
 }
+
+bool Cache::access(uint32_t client_id, uintptr_t addr) {
+    return access(addr);
+}

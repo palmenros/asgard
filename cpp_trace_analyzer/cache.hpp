@@ -74,6 +74,10 @@ public:
     // Used for debugging.
     bool exists(uintptr_t addr);
     bool access(uintptr_t addr);
+
+    // Used only for API uniformity with other caches
+    bool access(uint32_t client_id, uintptr_t addr);
+
     // Returns if its a hit or not.
     bool access(const LocationInfo& loc, uintptr_t addr);
     uint64_t cache_size() const noexcept;
