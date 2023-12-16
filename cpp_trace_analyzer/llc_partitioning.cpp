@@ -46,6 +46,9 @@ uint32_t WayPartitioning::hits(uint32_t client_id) const {
     }
     return way_partitioned_caches_[client_id].hits();
 }
+Cache &WayPartitioning::get_cache(uint32_t client_id) {
+    return way_partitioned_caches_.at(client_id);
+}
 
 InterNodePartitioning::InterNodePartitioning(uint64_t slice_size, uint32_t assoc, uint32_t block_size, const std::vector<uint32_t>& n_slices) {
     memory_nodes_.resize(n_slices.size());
@@ -60,7 +63,7 @@ static uint32_t bits_to_represent(uint32_t n) {
     return n > 0 ? 1 + bits_to_represent(n/2) : 0;
 }
 
-void InterNodePartitioning::access(uint32_t client_id, uintptr_t addr) {
+bool InterNodePartitioning::access(uint32_t client_id, uintptr_t addr) {
     if (client_id >= memory_nodes_.size()) {
         throw std::invalid_argument("Invalid client_id given!!");
     }
@@ -74,11 +77,11 @@ void InterNodePartitioning::access(uint32_t client_id, uintptr_t addr) {
     auto node_selection = static_cast<uint32_t>((addr >> page_offset_bits) & Cache::mask(node_selection_bits));
     auto& slice = memory_node[node_selection % memory_node.size()];
 
-    slice.access(Cache::compute_location_info(addr, slice.block_size(), slice.sets(), slice.tag_bits()), addr);
+    return slice.access(Cache::compute_location_info(addr, slice.block_size(), slice.sets(), slice.tag_bits()), addr);
 }
 
 
-uint32_t InterNodePartitioning::misses(uint32_t client_id) {
+uint32_t InterNodePartitioning::misses(uint32_t client_id) const {
     // Sum of all misses of all memory nodes.
     if (client_id >= memory_nodes_.size()) {
         throw std::invalid_argument("Invalid client_id given!!");
@@ -93,7 +96,7 @@ uint32_t InterNodePartitioning::misses(uint32_t client_id) {
     return misses;
 }
 
-uint32_t InterNodePartitioning::hits(uint32_t client_id) {
+uint32_t InterNodePartitioning::hits(uint32_t client_id) const {
     // Sum of all hits of all memory nodes.
     if (client_id >= memory_nodes_.size()) {
         throw std::invalid_argument("Invalid client_id given!!");
@@ -189,7 +192,7 @@ ClusterWayPartitioning::ClusterWayPartitioning(uint32_t n_clusters, uint64_t cac
     block_size_ = block_size;
 }
 
-void ClusterWayPartitioning::access(uint32_t client_id, uintptr_t addr) {
+bool ClusterWayPartitioning::access(uint32_t client_id, uintptr_t addr) {
     if (client_id >= stats_.size()) {
         throw std::invalid_argument("Invalid client_id given!");
     }
@@ -215,6 +218,7 @@ void ClusterWayPartitioning::access(uint32_t client_id, uintptr_t addr) {
     } else {
         stats_[client_id].second++;
     }
+    return hit;
 }
 
 uint32_t ClusterWayPartitioning::misses(uint32_t client_id) const {
@@ -237,8 +241,7 @@ std::vector<WayPartitioning> &ClusterWayPartitioning::clusters() {
 
 InterIntraNodePartitioning::InterIntraNodePartitioning(uint32_t assoc, uint32_t block_size,
                                                        const std::vector<std::vector<uint32_t>> &n_cache_sizes,
-                                                       const std::vector<inter_intra_aux_table_t>& aux_tables_per_client,
-                                                       uint32_t max_bitwidth) {
+                                                       const std::vector<inter_intra_aux_table_t>& aux_tables_per_client) {
     // Check that all clusters contain cache sizes for each client.
     uint32_t n_clients = aux_tables_per_client.size();
     for (const auto& cache_sizes_per_cluster: n_cache_sizes) {
@@ -265,19 +268,20 @@ InterIntraNodePartitioning::InterIntraNodePartitioning(uint32_t assoc, uint32_t 
     }
 
     aux_tables_per_client_ = aux_tables_per_client;
-    max_bitwidth_ = max_bitwidth;
     block_size_ = block_size;
     stats_.resize(inp_[0].size());
 }
 
-void InterIntraNodePartitioning::access(uint32_t client_id, uintptr_t addr) {
+bool InterIntraNodePartitioning::access(uint32_t client_id, uintptr_t addr) {
     if (client_id >= aux_tables_per_client_.size() || client_id >= inp_[0].size()) {
         throw std::invalid_argument("Invalid client_id given!!");
     }
 
     // Get the node selection bits (after set_index).
     auto block_offset_bits = (uint32_t) std::log2(block_size_);
-    auto node_selection_bits = std::min(ADDRESS_SIZE - (block_offset_bits + set_bits_), max_bitwidth_);
+    auto node_selection_bits = ADDRESS_SIZE - (block_offset_bits + set_bits_);
+    // TODO: I think thehre are some problems here with node_selection_bits
+
     auto node_selection = (addr >> (block_offset_bits + set_bits_)) & Cache::mask(node_selection_bits);
 
     uint32_t cluster_id = 0;
@@ -300,7 +304,9 @@ void InterIntraNodePartitioning::access(uint32_t client_id, uintptr_t addr) {
         } else {
             stats_[client_id].second++;
         }
+        return hit;
     }
+    return false;
 }
 
 uint32_t InterIntraNodePartitioning::misses(uint32_t client_id) const {

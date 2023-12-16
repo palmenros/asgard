@@ -14,6 +14,8 @@ public:
     bool access(uint32_t client_id, uintptr_t addr);
     uint32_t misses(uint32_t client_id) const;
     uint32_t hits(uint32_t client_id) const;
+
+    Cache& get_cache(uint32_t client_id);
 private:
     std::vector<Cache> way_partitioned_caches_;
 };
@@ -25,9 +27,9 @@ public:
     // the rest are information for LLC slice.
     InterNodePartitioning(uint64_t cache_size, uint32_t assoc, uint32_t block_size, const std::vector<uint32_t> &n_slices);
 
-    void access(uint32_t client_id, uintptr_t addr);
-    uint32_t misses(uint32_t client_id);
-    uint32_t hits(uint32_t client_id);
+    bool access(uint32_t client_id, uintptr_t addr);
+    uint32_t misses(uint32_t client_id) const;
+    uint32_t hits(uint32_t client_id) const;
     const std::vector<Cache> &memory_nodes(uint32_t client_id);
 private:
     // Memory node list per client.
@@ -60,7 +62,7 @@ public:
     ClusterWayPartitioning(uint32_t n_clusters, uint64_t cache_size, uint32_t block_size,
                            const std::vector<uint32_t> &n_ways);
 
-    void access(uint32_t client_id, uintptr_t addr);
+    bool access(uint32_t client_id, uintptr_t addr);
     uint32_t misses(uint32_t client_id) const;
     uint32_t hits(uint32_t client_id) const;
     std::vector<WayPartitioning> &clusters();
@@ -88,10 +90,9 @@ public:
                                // n_cache_sizes[clusterId][client] -> Size of the private cache of that client
                                const std::vector<std::vector<uint32_t>> &n_cache_sizes,
                                // aux_tables_per_client[client] -> Auxiliary table for client
-                               const std::vector<inter_intra_aux_table_t>& aux_tables_per_client,
-                               uint32_t max_bitwidth);
+                               const std::vector<inter_intra_aux_table_t>& aux_tables_per_client);
 
-    void access(uint32_t client_id, uintptr_t addr);
+    bool access(uint32_t client_id, uintptr_t addr);
     uint32_t misses(uint32_t client_id) const;
     uint32_t hits(uint32_t client_id) const;
     Cache& get_cache_slice(uint32_t client_id, uint32_t cluster_id);
@@ -99,8 +100,6 @@ private:
     std::vector<inter_intra_aux_table_t> aux_tables_per_client_;
     // inp[cluster][client] -> Cache of that client has in cluster.
     std::vector<std::vector<Cache>> inp_;
-    // *maximum* number of bits to get after the set bits from right to left in order to do modulo and compare between cum_sum
-    uint32_t max_bitwidth_;
     uint32_t block_size_;
     // Set bits is the maximum number of set bits for each cache.
     uint32_t set_bits_;
