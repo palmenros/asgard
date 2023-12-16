@@ -42,6 +42,7 @@ private:
 class Cache {
 public:
     Cache() = default;
+    // cache_size and block_size in bytes.
     Cache(uint64_t cache_size, uint32_t sets, uint32_t assoc, uint32_t block_size);
     Cache(uint64_t cache_size, uint32_t assoc, uint32_t block_size);
 

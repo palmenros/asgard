@@ -3,5 +3,7 @@ project(cpp_trace_analyzer)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(cpp_trace_analyzer memory_analyzer.cpp cache.cpp llc_partitioning.cpp)
+add_executable(cpp_trace_analyzer memory_analyzer.cpp cache.cpp llc_partitioning.cpp
+        statistics_generator.cpp
+        statistics_generator.hpp)
 add_executable(test_catch test_catch.cpp cache.cpp llc_partitioning.cpp test_catch.cpp)

@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include "statistics_generator.hpp"
 
 static const std::string& get_opt(const std::vector<std::string>& args, const std::string& option) {
     auto itr =  std::find(args.begin(), args.end(), option);
@@ -37,7 +38,7 @@ static void analyze_trace_file(const std::string& trace_file_name) {
     }
 }
 
-int main(int argc, char *argv[]) {
+int main_standalone(int argc, char *argv[]) {
     if (argc != 3) {
         std::cerr << "<usage> memory_analyzer -f <trace_file>" << std::endl;
         return EXIT_FAILURE;
@@ -57,5 +58,15 @@ int main(int argc, char *argv[]) {
 
     analyze_trace_file(trace_file_name);
 
+    return 0;
+}
+
+int main_statistics(int arg, char** argv) {
+    generate_stats();
+    return 0;
+}
+
+int main(int argc, char** argv) {
+    main_statistics(argc, argv);
     return 0;
 }
