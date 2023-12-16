@@ -77,6 +77,7 @@ public:
 
     // Used only for API uniformity with other caches
     bool access(uint32_t client_id, uintptr_t addr);
+    uint32_t misses(uint32_t client_id) const noexcept;
 
     // Returns if its a hit or not.
     bool access(const LocationInfo& loc, uintptr_t addr);

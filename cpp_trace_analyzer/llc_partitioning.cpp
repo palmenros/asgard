@@ -122,7 +122,7 @@ IntraNodePartitioning::IntraNodePartitioning(uint64_t cache_size, uint32_t assoc
                                              : cache_(cache_size, assoc, block_size),
                                                aux_table_(std::move(aux_table)), stats_(aux_table_.size(), {0, 0}) {}
 
-void IntraNodePartitioning::access(uint32_t client_id, uintptr_t addr) {
+bool IntraNodePartitioning::access(uint32_t client_id, uintptr_t addr) {
     if (client_id >= aux_table_.size()) {
         throw std::invalid_argument("Invalid client_id given!!");
     }
@@ -156,6 +156,7 @@ void IntraNodePartitioning::access(uint32_t client_id, uintptr_t addr) {
     } else {
         stats.second++;
     }
+    return hit;
 }
 
 uint32_t IntraNodePartitioning::misses(uint32_t client_id) const {

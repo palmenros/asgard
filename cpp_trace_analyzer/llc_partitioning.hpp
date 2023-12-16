@@ -44,7 +44,7 @@ class IntraNodePartitioning {
 public:
     IntraNodePartitioning(uint64_t cache_size, uint32_t assoc, uint32_t block_size, std::vector<fixed_bits_t> aux_table);
 
-    void access(uint32_t client_id, uintptr_t addr);
+    bool access(uint32_t client_id, uintptr_t addr);
     uint32_t misses(uint32_t client_id) const;
     uint32_t hits(uint32_t client_id) const;
     Cache &cache();
@@ -122,7 +122,7 @@ public:
     L2Cache& get_shared_cache();
 
     // returns the number of misses in the L2 cache
-    [[nodiscard]] uint32_t misses() const;
+    [[nodiscard]] uint32_t misses(uint32_t client_id) const;
 
 private:
     std::vector<Cache> private_caches_;
@@ -130,8 +130,8 @@ private:
 };
 
 template<class L2Cache>
-uint32_t MultiLevelCache<L2Cache>::misses() const {
-    return shared_cache_.misses();
+uint32_t MultiLevelCache<L2Cache>::misses(uint32_t client_id) const {
+    return shared_cache_.misses(client_id);
 }
 
 template<class L2Cache>
