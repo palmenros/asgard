@@ -83,6 +83,7 @@ public:
     bool access(const LocationInfo& loc, uintptr_t addr);
     uint64_t cache_size() const noexcept;
     uint32_t sets() const noexcept;
+    uint32_t assoc() const;
     uint32_t block_size() const noexcept;
     uint32_t tag_bits() const noexcept;
     uint32_t misses() const noexcept;
