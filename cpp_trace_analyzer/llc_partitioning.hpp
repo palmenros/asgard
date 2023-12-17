@@ -14,7 +14,6 @@ public:
     bool access(uint32_t client_id, uintptr_t addr);
     uint32_t misses(uint32_t client_id) const;
     uint32_t hits(uint32_t client_id) const;
-
     Cache& get_cache(uint32_t client_id);
 private:
     std::vector<Cache> way_partitioned_caches_;
@@ -66,6 +65,7 @@ public:
     uint32_t misses(uint32_t client_id) const;
     uint32_t hits(uint32_t client_id) const;
     std::vector<WayPartitioning> &clusters();
+    uint32_t n_clusters() const;
 private:
     uint32_t block_size_;
     using cluster_t_intra_node_t = WayPartitioning;
@@ -96,6 +96,7 @@ public:
     uint32_t misses(uint32_t client_id) const;
     uint32_t hits(uint32_t client_id) const;
     Cache& get_cache_slice(uint32_t client_id, uint32_t cluster_id);
+    uint32_t n_clusters() const;
 private:
     std::vector<inter_intra_aux_table_t> aux_tables_per_client_;
     // inp[cluster][client] -> Cache of that client has in cluster.

@@ -239,6 +239,10 @@ std::vector<WayPartitioning> &ClusterWayPartitioning::clusters() {
     return clusters_;
 }
 
+uint32_t ClusterWayPartitioning::n_clusters() const {
+    return clusters_.size();
+}
+
 InterIntraNodePartitioning::InterIntraNodePartitioning(uint32_t assoc, uint32_t block_size,
                                                        const std::vector<std::vector<uint32_t>> &n_cache_sizes,
                                                        const std::vector<inter_intra_aux_table_t>& aux_tables_per_client) {
@@ -272,7 +276,7 @@ InterIntraNodePartitioning::InterIntraNodePartitioning(uint32_t assoc, uint32_t 
 
     aux_tables_per_client_ = aux_tables_per_client;
     block_size_ = block_size;
-    stats_.resize(inp_[0].size());
+    stats_.resize(n_clients, {0, 0});
 }
 
 bool InterIntraNodePartitioning::access(uint32_t client_id, uintptr_t addr) {
@@ -331,4 +335,7 @@ Cache& InterIntraNodePartitioning::get_cache_slice(uint32_t client_id, uint32_t 
     }
 
     return inp_[cluster_id][client_id];
+}
+uint32_t InterIntraNodePartitioning::n_clusters() const {
+    return inp_.size();
 }

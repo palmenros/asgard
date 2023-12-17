@@ -41,6 +41,10 @@ uint32_t Cache::sets() const noexcept {
     return cache_.size();
 }
 
+uint32_t Cache::assoc() const {
+    return cache_.at(0).associativity();
+}
+
 uint32_t Cache::block_size() const noexcept {
     return block_size_;
 }
