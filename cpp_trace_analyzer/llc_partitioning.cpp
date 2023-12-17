@@ -186,14 +186,14 @@ Cache &IntraNodePartitioning::cache() {
     return cache_;
 }
 
-ClusterWayPartitioning::ClusterWayPartitioning(uint32_t n_clusters, uint64_t cache_size, uint32_t block_size,
+ClusterWayPartitioning::ClusterWayPartitioning(uint32_t n_clusters, uint64_t slice_size, uint32_t block_size,
                                                const std::vector<uint32_t> &n_ways) {
     // n_clusters should be power of 2
     if (!Cache::is_power_of_2(n_clusters)) {
         throw std::invalid_argument("n_clusters should be power of 2!");
     }
 
-    clusters_.resize(n_clusters, WayPartitioning(cache_size, block_size, n_ways));
+    clusters_.resize(n_clusters, WayPartitioning(slice_size, block_size, n_ways));
     stats_.resize(n_ways.size(), {0, 0});
     block_size_ = block_size;
 }
@@ -206,17 +206,13 @@ bool ClusterWayPartitioning::access(uint32_t client_id, uintptr_t addr) {
     // Get slice id.
     auto slice_id_bits = (uint32_t) log2(clusters_.size());
     auto block_offset_bits = (uint32_t) std::log2(block_size_);
-    auto cluster = (uint32_t) (addr >> block_offset_bits) & Cache::mask(slice_id_bits);
+    auto cluster = (uint32_t) (addr >> block_offset_bits) & bit_mask_n_bits_right(slice_id_bits);
     assert(cluster < clusters_.size());
 
     // Remove slice id bits to avoid conflicts.
-    std::bitset<ADDRESS_SIZE> baddr(addr);
-    auto bit_start = block_offset_bits;
-    auto bit_end = 63;
-    for (uint32_t i = bit_start; i < bit_end; i++) {
-        baddr[i] = baddr[i + 1];
-    }
-    auto new_addr = baddr.to_ulong();
+    auto block_offset_mask = bit_mask_n_bits_right(block_offset_bits);
+
+    auto new_addr = ((addr >> slice_id_bits) & ~block_offset_mask) | (addr & block_offset_mask);
 
     bool hit = clusters_[cluster].access(client_id, new_addr);
     if (!hit) {

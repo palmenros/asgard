@@ -581,7 +581,7 @@ TEST_CASE("Cluster partitioning normal way input", "Cluster partitioning normal"
 
 TEST_CASE("Cluster partitioning normal way", "Cluster partitioning normal") {
     vector<uint32_t> n_ways = {2, 1, 1};
-    ClusterWayPartitioning cwp = ClusterWayPartitioning(4, 512, 16, n_ways);
+    ClusterWayPartitioning cwp = ClusterWayPartitioning(4, 128, 16, n_ways);
 
     //We have two clients with a different distribution of cores among clusters
     //Each cluster has two sets with four ways each

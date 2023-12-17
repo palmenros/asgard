@@ -61,7 +61,7 @@ private:
 
 class ClusterWayPartitioning {
 public:
-    ClusterWayPartitioning(uint32_t n_clusters, uint64_t cache_size, uint32_t block_size,
+    ClusterWayPartitioning(uint32_t n_clusters, uint64_t slice_size, uint32_t block_size,
                            const std::vector<uint32_t> &n_ways);
 
     bool access(uint32_t client_id, uintptr_t addr);
