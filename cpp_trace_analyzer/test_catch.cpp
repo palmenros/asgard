@@ -580,10 +580,8 @@ TEST_CASE("Cluster partitioning normal way input", "Cluster partitioning normal"
 }
 
 TEST_CASE("Cluster partitioning normal way", "Cluster partitioning normal") {
-    //Note that there is an unused way
-    // TODO(kostas-to-luis): Check me!
     vector<uint32_t> n_ways = {2, 1, 1};
-    ClusterWayPartitioning cwp = ClusterWayPartitioning(4, 128, 16, n_ways);
+    ClusterWayPartitioning cwp = ClusterWayPartitioning(4, 512, 16, n_ways);
 
     //We have two clients with a different distribution of cores among clusters
     //Each cluster has two sets with four ways each
@@ -619,7 +617,6 @@ TEST_CASE("Cluster partitioning normal way", "Cluster partitioning normal") {
     cwp.access(0, addr3);
 
     cwp.access(1, addr0);
-
     cwp.access(1, addr6);
 
     cwp.access(0, addr7);
@@ -665,7 +662,6 @@ TEST_CASE("Cluster partitioning normal way", "Cluster partitioning normal") {
     REQUIRE(cwp.misses(1) == 3);
     REQUIRE(cwp.hits(1) == 2);
 
-    // TODO(kostas-to-luis): Check me!
     REQUIRE(cwp.clusters()[0].misses(0) == 5);
     REQUIRE(cwp.clusters()[1].misses(0) == 0);
     REQUIRE(cwp.clusters()[2].misses(0) == 2);
@@ -673,7 +669,6 @@ TEST_CASE("Cluster partitioning normal way", "Cluster partitioning normal") {
 
     REQUIRE(cwp.clusters()[0].misses(1) == 2);
 
-    // TODO(kostas-to-luis): Check me!
     REQUIRE(cwp.clusters()[0].hits(0) == 5);
     REQUIRE(cwp.clusters()[1].hits(0) == 0);
     REQUIRE(cwp.clusters()[2].hits(0) == 2);
@@ -688,11 +683,11 @@ TEST_CASE("Inter-intra node partitioning input", "Inter-intra node partitioning"
             {4, {{0, 1}, {1, 2}, {3, 3}}},
             {6, {{1, 0}, {2, 4}, {3, 5}}}
     };
-    REQUIRE_THROWS(InterIntraNodePartitioning(2, 16,cache_sizes,aux_table,4));
+    REQUIRE_THROWS(InterIntraNodePartitioning(2, 16,cache_sizes,aux_table));
 
     //Invalid number of clients
     cache_sizes = {{64, 64, 0, 0}, {64, 32, 32}, {0, 0, 128}, {32, 32, 32}};
-    REQUIRE_THROWS(InterIntraNodePartitioning(2, 16,cache_sizes,aux_table,4));
+    REQUIRE_THROWS(InterIntraNodePartitioning(2, 16,cache_sizes,aux_table));
 
     //Invalid number of clients between cache sizes and aux table
     cache_sizes = {{64, 64, 0}, {64, 32, 32}, {0, 0, 128}, {32, 32, 32}};
@@ -702,7 +697,7 @@ TEST_CASE("Inter-intra node partitioning input", "Inter-intra node partitioning"
             {6, {{1, 0}, {2, 4}, {3, 5}}},
             {6, {{1, 0}, {2, 4}, {3, 5}}}
     };
-    REQUIRE_THROWS(InterIntraNodePartitioning(2, 16,cache_sizes,aux_table,4));
+    REQUIRE_THROWS(InterIntraNodePartitioning(2, 16,cache_sizes,aux_table));
 }
 
 uint32_t createAddressIntraInterFirstCluster(uint32_t after_tag, uint32_t slice, uint32_t index, uint32_t offset) {
@@ -737,8 +732,7 @@ TEST_CASE("Inter-intra node partitioning", "Inter-intra node partitioning") {
             {6, {{1, 0}, {2, 4}, {3, 5}}}};
     auto inp = InterIntraNodePartitioning(2, 16,
                                cache_sizes,
-                               aux_table,
-                               4);
+                               aux_table);
 
     //We have 4 clusters, with caches with 4 sets each and assoc 2.
 
