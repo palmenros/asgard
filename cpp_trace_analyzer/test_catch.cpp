@@ -710,28 +710,28 @@ TEST_CASE("Inter-intra node partitioning input", "Inter-intra node partitioning"
     REQUIRE_THROWS(InterIntraNodePartitioning(2, 16,cache_sizes,aux_table));
 }
 
-uint32_t createAddressIntraInterFirstCluster(uint32_t after_tag, uint32_t slice, uint32_t index, uint32_t offset) {
-    //Get the maximal values and no more (avoid mistakes)
-    slice = slice & 0b1111;
-    index = index & 0b1;
-    offset = offset & 0b1111;
-    return (after_tag << 9) | (slice << 5) | (index << 4) | offset;
-}
-
-uint32_t createAddressIntraInterSecondCluster(uint32_t after_tag, uint32_t slice, uint32_t index, uint32_t offset) {
-    //Get the maximal values and no more (avoid mistakes)
-    slice = slice & 0b1111;
-    index = index & 0b11;
-    offset = offset & 0b1111;
-    return (after_tag << 9) | (slice << 5) | (index << 4) | offset;
-}
-
-uint32_t createAddressIntraInterThirdCluster(uint32_t after_tag, uint32_t slice, uint32_t index, uint32_t offset) {
-    //Get the maximal values and no more (avoid mistakes)
-    slice = slice & 0b1111;
-    offset = offset & 0b1111;
-    return (after_tag << 8) | (slice << 4) | offset;
-}
+//uint32_t createAddressIntraInterFirstCluster(uint32_t after_tag, uint32_t slice, uint32_t index, uint32_t offset) {
+//    //Get the maximal values and no more (avoid mistakes)
+//    slice = slice & 0b1111;
+//    index = index & 0b1;
+//    offset = offset & 0b1111;
+//    return (after_tag << 9) | (slice << 5) | (index << 4) | offset;
+//}
+//
+//uint32_t createAddressIntraInterSecondCluster(uint32_t after_tag, uint32_t slice, uint32_t index, uint32_t offset) {
+//    //Get the maximal values and no more (avoid mistakes)
+//    slice = slice & 0b1111;
+//    index = index & 0b11;
+//    offset = offset & 0b1111;
+//    return (after_tag << 9) | (slice << 5) | (index << 4) | offset;
+//}
+//
+//uint32_t createAddressIntraInterThirdCluster(uint32_t after_tag, uint32_t slice, uint32_t index, uint32_t offset) {
+//    //Get the maximal values and no more (avoid mistakes)
+//    slice = slice & 0b1111;
+//    offset = offset & 0b1111;
+//    return (after_tag << 8) | (slice << 4) | offset;
+//}
 
 // NOTE: Test case was designed for a different implementation in mind. Not applicable.
 //TEST_CASE("Inter-intra node partitioning", "Inter-intra node partitioning") {
