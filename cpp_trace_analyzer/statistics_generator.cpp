@@ -94,11 +94,11 @@ std::vector<uint32_t> getMisses(const std::vector<T>& caches, uint32_t client_id
     });
 }
 
-void multiple_private_cache_sizes() {
+void multiple_private_cache_sizes(const std::string& trace_name) {
     header("Multiple private cache sizes");
 
     std::ifstream graph_trace;
-    load_trace("qemu_graph_trace", graph_trace);
+    load_trace(trace_name, graph_trace);
 
     // L1: 64KB 4-way, 64-byte blocks
 
@@ -133,11 +133,11 @@ void multiple_private_cache_sizes() {
     std::cout << "Analyzed " << num_accesses << " accesses" << std::endl;
 }
 
-void multiple_private_cache_assocs() {
+void multiple_private_cache_assocs(const std::string& trace_name) {
     header("Multiple private cache associativities");
 
     std::ifstream graph_trace;
-    load_trace("qemu_graph_trace", graph_trace);
+    load_trace(trace_name, graph_trace);
 
     // L1: 64KB 4-way, 64-byte blocks
 
@@ -178,11 +178,24 @@ void multiple_private_cache_assocs() {
     std::cout << "Analyzed " << num_accesses << " accesses" << std::endl;
 }
 
-void intra_vs_way_partitioning() {
-    header("Inter vs. way partitioning");
+std::vector<uint32_t> getWayPartitionedNumAccesses(std::vector<MultiLevelCache<WayPartitioning>>& caches) {
+    return mapVector<MultiLevelCache<WayPartitioning>, uint32_t>(caches, [](const MultiLevelCache<WayPartitioning>& cache) -> uint32_t {
+        return cache.num_total_accesses(0);
+    });
+}
+
+std::vector<uint32_t> getIntraNumAccess(std::vector<MultiLevelCache<IntraNodePartitioning>>& caches) {
+    return mapVector<MultiLevelCache<IntraNodePartitioning>, uint32_t>(caches, [](const MultiLevelCache<IntraNodePartitioning>& cache) -> uint32_t {
+        return cache.num_total_accesses(0);
+    });
+}
+
+
+void intra_vs_way_partitioning(const std::string& trace_name) {
+    header("Intra vs. way partitioning");
 
     std::ifstream graph_trace;
-    load_trace("qemu_graph_trace", graph_trace);
+    load_trace(trace_name, graph_trace);
 
 
     uint32_t num_cores = 2;
@@ -243,15 +256,20 @@ void intra_vs_way_partitioning() {
         }
     });
 
-    std::cout << "Cache sizes: " << sizes << std::endl;
+    std::cout << "{\n";
+    std::cout << "'cache_slice_sizes': " << sizes << ',' << std::endl;
 
     auto way_partitioned_misses = getMisses(way_partitioned_caches);
-    std::cout << "Way Partition Misses: " << way_partitioned_misses << std::endl;
+    std::cout << "'way_partition_misses': " << way_partitioned_misses << ',' << std::endl;
 
     auto intra_node_misses = getMisses(intra_node_caches);
-    std::cout << "Intra Node Misses: " << intra_node_misses << std::endl;
+    std::cout << "'intra_node_misses': " << intra_node_misses << ',' << std::endl;
 
-    std::cout << "Analyzed " << num_accesses << " accesses" << std::endl;
+    std::cout << "'way_partition_accesses': " << getWayPartitionedNumAccesses(way_partitioned_caches) << ',' << std::endl;
+    std::cout << "'intra_node_accesses': " << getIntraNumAccess(intra_node_caches) << ',' << std::endl;
+
+    std::cout << "'total_analyzed': " << num_accesses << ',' << std::endl;
+    std::cout << "}" << std::endl;
 }
 
 // For each cache (a test run), returns a vector of clusters and how many accesses each cluster has received. Will not show every cluster, only the clusters the client has accessed
@@ -273,7 +291,7 @@ std::vector<std::vector<uint32_t>> getInterNodeNumAccesses(std::vector<MultiLeve
     return res;
 }
 
-std::vector<std::vector<uint32_t>> getWayPartitionedNumAccesses(std::vector<MultiLevelCache<ClusterWayPartitioning>>& caches) {
+std::vector<std::vector<uint32_t>> getClusterWayPartitionedNumAccesses(std::vector<MultiLevelCache<ClusterWayPartitioning>>& caches) {
     std::vector<std::vector<uint32_t>> res;
     res.reserve(caches.size());
 
@@ -312,7 +330,8 @@ std::vector<std::vector<uint32_t>> getInterIntraNumAccesses(std::vector<MultiLev
     return res;
 }
 
-void inter_vs_cluster_way_partitioning_vs_inter_intra() {
+
+void inter_vs_cluster_way_partitioning_vs_inter_intra(const std::string& trace_name) {
     uint32_t num_cores = 2;
     uint32_t block_size = 64;
 
@@ -331,7 +350,7 @@ void inter_vs_cluster_way_partitioning_vs_inter_intra() {
         ASSERT(num_slices_our_client_has <= num_clusters);
 
         std::ifstream graph_trace;
-        load_trace("qemu_graph_trace", graph_trace);
+        load_trace(trace_name, graph_trace);
 
 
         // Inter partitioning
@@ -356,7 +375,7 @@ void inter_vs_cluster_way_partitioning_vs_inter_intra() {
         std::vector<MultiLevelCache<ClusterWayPartitioning>> way_partitioned_caches;
         way_partitioned_caches.reserve(sizes.size());
         for(auto size : sizes) {
-            // TODO: Is cache-size per slice?
+            // Cache size is per slice?
             auto shared_cache = ClusterWayPartitioning{num_clusters, size, block_size, n_ways};
 //            std::cerr << mapVector<WayPartitioning, uint32_t>(shared_cache.clusters(), [](const WayPartitioning& way_partitioning) -> uint32_t { return way_partitioning.get_cache(0).cache_size(); }) << std::endl;
 
@@ -364,8 +383,6 @@ void inter_vs_cluster_way_partitioning_vs_inter_intra() {
         }
 
         // Inter-intra node partitioning
-
-        // TODO: Something is fishy with Inter-intra results. Investigate
         std::vector<MultiLevelCache<InterIntraNodePartitioning>> inter_intra_node_caches;
         inter_intra_node_caches.reserve(sizes.size());
         for(auto size: sizes) {
@@ -447,7 +464,7 @@ void inter_vs_cluster_way_partitioning_vs_inter_intra() {
         auto inter_node_accesses = getInterNodeNumAccesses(inter_node_partitioned_caches);
         std::cout << "'inter_node_accesses': " << inter_node_accesses << ',' << std::endl;
         
-        auto way_partitioned_accesses = getWayPartitionedNumAccesses(way_partitioned_caches);
+        auto way_partitioned_accesses = getClusterWayPartitionedNumAccesses(way_partitioned_caches);
         std::cout << "'way_partition_accesses': " << way_partitioned_accesses << ',' << std::endl;
         
         auto intra_node_accesses = getInterIntraNumAccesses(inter_intra_node_caches, num_clusters);
@@ -470,11 +487,11 @@ void inter_vs_cluster_way_partitioning_vs_inter_intra() {
     std::cout << "}" << std::endl;
 }
 
-void access_uniformity_way_vs_inter_intra() {
+void access_uniformity_way_vs_inter_intra(const std::string& trace_name) {
     header("Access uniformity way vs inter-intra...");
 
     std::ifstream graph_trace;
-    load_trace("qemu_graph_trace", graph_trace);
+    load_trace(trace_name, graph_trace);
 
     // Test-case:
     //  8 clusters, each cluster with 2 cores
@@ -571,7 +588,7 @@ void access_uniformity_way_vs_inter_intra() {
     auto intra_node_misses = getMisses(inter_intra_node_caches);
     std::cout << "Inter-Intra Node Misses: " << intra_node_misses << std::endl;
 
-    auto way_partitioned_accesses = getWayPartitionedNumAccesses(way_partitioned_caches);
+    auto way_partitioned_accesses = getClusterWayPartitionedNumAccesses(way_partitioned_caches);
     std::cout << "Way Partition Accesses: " << way_partitioned_accesses << std::endl;
 
     auto intra_node_accesses = getInterIntraNumAccesses(inter_intra_node_caches, num_clusters);
@@ -617,11 +634,12 @@ void generate_stats() {
     std::cout << "Generating stats..." << std::endl;
     //    separate_trace_file_per_core();
 
+    std::string trace_name = "qemu_graph_trace_page_rank";
 
-//    multiple_private_cache_sizes();
-//    multiple_private_cache_assocs();
-//    intra_vs_way_partitioning();
-    inter_vs_cluster_way_partitioning_vs_inter_intra();
+//    multiple_private_cache_sizes(trace_name);
+//    multiple_private_cache_assocs(trace_name);
+    intra_vs_way_partitioning(trace_name);
+//    inter_vs_cluster_way_partitioning_vs_inter_intra(trace_name);
 
-//    access_uniformity_way_vs_inter_intra();
+//    access_uniformity_way_vs_inter_intra(trace_name);
 }

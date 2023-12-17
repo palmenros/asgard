@@ -733,6 +733,7 @@ uint32_t createAddressIntraInterThirdCluster(uint32_t after_tag, uint32_t slice,
     return (after_tag << 8) | (slice << 4) | offset;
 }
 
+// NOTE: Test case was designed for a different implementation in mind. Not applicable.
 //TEST_CASE("Inter-intra node partitioning", "Inter-intra node partitioning") {
 //    //We have three clients with unequal distributions. Note that the last cluster has an unused row!
 //    vector<vector<uint32_t>> cache_sizes = {{64, 64, 0}, {64, 32, 32}, {0, 0, 128}, {32, 32, 32}};

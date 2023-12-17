@@ -122,14 +122,24 @@ public:
     Cache& get_private_cache(uint32_t core_id);
 
     L2Cache& get_shared_cache();
+    const L2Cache& get_shared_cache() const;
 
     // returns the number of misses in the L2 cache
     [[nodiscard]] uint32_t misses(uint32_t client_id) const;
+    [[nodiscard]] uint32_t num_total_accesses(uint32_t client_id) const;
 
 private:
     std::vector<Cache> private_caches_;
     L2Cache shared_cache_;
 };
+template<class L2Cache>
+uint32_t MultiLevelCache<L2Cache>::num_total_accesses(uint32_t client_id) const {
+    return shared_cache_.misses(client_id) + shared_cache_.hits(client_id);
+}
+template<class L2Cache>
+const L2Cache &MultiLevelCache<L2Cache>::get_shared_cache() const {
+    return shared_cache_;
+}
 
 template<class L2Cache>
 uint32_t MultiLevelCache<L2Cache>::misses(uint32_t client_id) const {

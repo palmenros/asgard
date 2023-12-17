@@ -152,9 +152,10 @@ bool IntraNodePartitioning::access(uint32_t client_id, uintptr_t addr) {
     }
 
     auto tag_bits = ADDRESS_SIZE - block_offset_bits;
+    
     LocationInfo loc {
-        .set_index = static_cast<uint32_t>((baddr.to_ulong() >> block_offset_bits) & Cache::mask(set_bits)),
-        .tag = static_cast<uint64_t>(addr >> block_offset_bits) & Cache::mask(tag_bits)
+        .set_index = static_cast<uint32_t>((baddr.to_ulong() >> block_offset_bits) & bit_mask_n_bits_right(set_bits)),
+        .tag = static_cast<uint64_t>(addr >> block_offset_bits) & bit_mask_n_bits_right(tag_bits)
     };
 
     auto& stats = stats_[client_id];
@@ -290,7 +291,7 @@ bool InterIntraNodePartitioning::access(uint32_t client_id, uintptr_t addr) {
     auto block_offset_bits = (uint32_t) std::log2(block_size_);
     auto node_selection_bits = ADDRESS_SIZE - (block_offset_bits + set_bits_);
 
-    auto node_selection = (addr >> (block_offset_bits + set_bits_)) & Cache::mask(node_selection_bits);
+    auto node_selection = (addr >> (block_offset_bits + set_bits_)) & bit_mask_n_bits_right(node_selection_bits);
 
     uint32_t cluster_id = 0;
     auto& aux_table = aux_tables_per_client_[client_id];
