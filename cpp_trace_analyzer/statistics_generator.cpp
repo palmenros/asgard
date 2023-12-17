@@ -330,11 +330,6 @@ void inter_vs_cluster_way_partitioning_vs_inter_intra() {
         ASSERT(num_slices_our_client_has > 0);
         ASSERT(num_slices_our_client_has <= num_clusters);
 
-        std::stringstream ss;
-        ss << "Inter vs. way partitioning. Client owns " << num_slices_our_client_has << " slices out of " << num_clusters;
-
-        header(ss.str());
-
         std::ifstream graph_trace;
         load_trace("qemu_graph_trace", graph_trace);
 
@@ -364,6 +359,7 @@ void inter_vs_cluster_way_partitioning_vs_inter_intra() {
 
         // Inter-intra node partitioning
 
+        // TODO: Something is fishy with Inter-intra results. Investigate
         std::vector<MultiLevelCache<InterIntraNodePartitioning>> inter_intra_node_caches;
         inter_intra_node_caches.reserve(sizes.size());
         for(auto size: sizes) {
@@ -422,34 +418,42 @@ void inter_vs_cluster_way_partitioning_vs_inter_intra() {
             }
         });
 
-        std::cout << "Cache slice sizes: " << sizes << std::endl;
+        std::cout <<  num_slices_our_client_has << ": {\n";
+        std::cout << "'cache_slice_sizes': " << sizes << ',' << std::endl;
 
         auto inter_node_misses = getMisses(inter_node_partitioned_caches);
-        std::cout << "Inter Node Misses: " << inter_node_misses << std::endl;
+        std::cout << "'inter_node_misses': " << inter_node_misses << ',' << std::endl;
 
         auto way_partitioned_misses = getMisses(way_partitioned_caches);
-        std::cout << "Way Partition Misses: " << way_partitioned_misses << std::endl;
+        std::cout << "'way_partition_misses': " << way_partitioned_misses << ',' << std::endl;
 
         auto intra_node_misses = getMisses(inter_intra_node_caches);
-        std::cout << "Inter-Intra Node Misses: " << intra_node_misses << std::endl;
+        std::cout << "'inter_intra_misses': " << intra_node_misses << ',' << std::endl;
 
         auto inter_node_accesses = getInterNodeNumAccesses(inter_node_partitioned_caches);
-        std::cout << "Inter Node Accesses: " << inter_node_accesses << std::endl;
+        std::cout << "'inter_node_accesses': " << inter_node_accesses << ',' << std::endl;
         
         auto way_partitioned_accesses = getWayPartitionedNumAccesses(way_partitioned_caches);
-        std::cout << "Way Partition Accesses: " << way_partitioned_accesses << std::endl;
+        std::cout << "'way_partition_accesses': " << way_partitioned_accesses << ',' << std::endl;
         
         auto intra_node_accesses = getInterIntraNumAccesses(inter_intra_node_caches, num_clusters);
-        std::cout << "Inter-Intra Node Accesses: " << intra_node_accesses << std::endl;
-        
-        
-        std::cout << "Analyzed " << num_accesses << " accesses" << std::endl;
+        std::cout << "'inter_intra_accesses': " << intra_node_accesses << ',' << std::endl;
+
+        std::cout << "'total_analyzed': " << num_accesses << "\n},"  << std::endl;
     };
 
+    std::stringstream ss;
+    ss << "Inter vs. way partitioning. Client owns varying number of slices out of "  << num_clusters;
+    header(ss.str());
+
+    std::cout << "{" << std::endl;
+
     test(1);
-//    test(2);
-//    test(4);
+    test(2);
+    test(4);
     test(8);
+
+    std::cout << "}" << std::endl;
 }
 
 void access_uniformity_way_vs_inter_intra() {
@@ -603,7 +607,7 @@ void generate_stats() {
 //    multiple_private_cache_sizes();
 //    multiple_private_cache_assocs();
 //    intra_vs_way_partitioning();
-//    inter_vs_cluster_way_partitioning_vs_inter_intra();
+    inter_vs_cluster_way_partitioning_vs_inter_intra();
 
-    access_uniformity_way_vs_inter_intra();
+//    access_uniformity_way_vs_inter_intra();
 }
