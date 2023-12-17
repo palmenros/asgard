@@ -16,6 +16,7 @@ public:
     uint32_t hits(uint32_t client_id) const;
 
     Cache& get_cache(uint32_t client_id);
+    const Cache& get_cache(uint32_t client_id) const;
 private:
     std::vector<Cache> way_partitioned_caches_;
 };
@@ -35,6 +36,7 @@ private:
     // Memory node list per client.
     // memory_nodes[i][j] = slice j of client i
     std::vector<std::vector<Cache>> memory_nodes_;
+    uint32_t num_clusters;
 };
 
 struct fixed_bits_t {

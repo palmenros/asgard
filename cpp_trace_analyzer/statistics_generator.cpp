@@ -343,7 +343,10 @@ void inter_vs_cluster_way_partitioning_vs_inter_intra() {
 
         std::vector<MultiLevelCache<InterNodePartitioning>> inter_node_partitioned_caches;
         for(auto size : sizes) {
-            inter_node_partitioned_caches.emplace_back(num_cores, L1, InterNodePartitioning{size, num_clusters, block_size, n_slices});
+            auto shared_cache = InterNodePartitioning{size, num_clusters, block_size, n_slices};
+//            std::cerr << mapVector<Cache, uint32_t>(shared_cache.memory_nodes(0), [](const Cache& cache) -> uint32_t { return cache.cache_size(); }) << std::endl;
+
+            inter_node_partitioned_caches.emplace_back(num_cores, L1, shared_cache);
         }
 
         // Cluster way partitioning
@@ -354,7 +357,10 @@ void inter_vs_cluster_way_partitioning_vs_inter_intra() {
         way_partitioned_caches.reserve(sizes.size());
         for(auto size : sizes) {
             // TODO: Is cache-size per slice?
-            way_partitioned_caches.emplace_back(num_cores, L1, ClusterWayPartitioning{num_clusters, size, block_size, n_ways});
+            auto shared_cache = ClusterWayPartitioning{num_clusters, size, block_size, n_ways};
+//            std::cerr << mapVector<WayPartitioning, uint32_t>(shared_cache.clusters(), [](const WayPartitioning& way_partitioning) -> uint32_t { return way_partitioning.get_cache(0).cache_size(); }) << std::endl;
+
+            way_partitioned_caches.emplace_back(num_cores, L1, shared_cache);
         }
 
         // Inter-intra node partitioning
@@ -384,10 +390,10 @@ void inter_vs_cluster_way_partitioning_vs_inter_intra() {
             other_slices.resize(num_clusters - num_slices_our_client_has);
 
             for(uint32_t i = 0; i < num_clusters - num_slices_our_client_has; ++i) {
-                other_slices[i] = inter_intra_aux_table_entry_t {
-                    slice_id + i, i + 1
-                };
-                n_cache_sizes[slice_id + i][1] = cache_slice_size;
+//                other_slices[i] = inter_intra_aux_table_entry_t {
+//                    slice_id + i, i + 1
+//                };
+//                n_cache_sizes[slice_id + i][1] = cache_slice_size;
             }
 
             std::vector<inter_intra_aux_table_t> aux_tables_per_client = {
@@ -396,6 +402,14 @@ void inter_vs_cluster_way_partitioning_vs_inter_intra() {
             };
 
             auto shared_cache = InterIntraNodePartitioning{num_clusters, block_size, n_cache_sizes, aux_tables_per_client};
+//
+//            for(uint32_t i = 0; i < num_clusters; i++) {
+//                auto& cache = shared_cache.get_cache_slice(0, i);
+//                std::cerr << cache.cache_size() << ", ";
+//            }
+//
+//            std::cerr << std::endl;
+
             inter_intra_node_caches.emplace_back(num_cores, L1, std::move(shared_cache));
         }
 
