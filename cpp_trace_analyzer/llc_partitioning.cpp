@@ -20,7 +20,7 @@ WayPartitioning::WayPartitioning(uint64_t cache_size, uint32_t block_size,
 
     way_partitioned_caches_.resize(n_ways.size());
     for (size_t i = 0; i < n_ways.size(); i++) {
-        way_partitioned_caches_[i] = Cache(cache_size, sets, n_ways[i], block_size);
+        way_partitioned_caches_[i] = Cache((cache_size * n_ways[i]) / s_ways, sets, n_ways[i], block_size);
     }
 }
 
@@ -50,17 +50,23 @@ Cache &WayPartitioning::get_cache(uint32_t client_id) {
     return way_partitioned_caches_.at(client_id);
 }
 
+const Cache &WayPartitioning::get_cache(uint32_t client_id) const {
+    return way_partitioned_caches_.at(client_id);
+}
+
 InterNodePartitioning::InterNodePartitioning(uint64_t slice_size, uint32_t assoc, uint32_t block_size, const std::vector<uint32_t>& n_slices) {
+    num_clusters = 0;
     memory_nodes_.resize(n_slices.size());
     for (size_t i = 0; i < n_slices.size(); i++) {
         std::vector<Cache> slices(n_slices[i], Cache(slice_size, assoc, block_size));
         memory_nodes_[i] = slices;
+        num_clusters += n_slices[i];
     }
 }
 
-
-static uint32_t bits_to_represent(uint32_t n) {
-    return n > 0 ? 1 + bits_to_represent(n/2) : 0;
+// Generates a bitmask with n bits set to 1 at the right. Ej, 00001, 00011, 00111
+static uint32_t bit_mask_n_bits_right(uint32_t n) {
+    return (1 << n) - 1;
 }
 
 bool InterNodePartitioning::access(uint32_t client_id, uintptr_t addr) {
@@ -71,10 +77,10 @@ bool InterNodePartitioning::access(uint32_t client_id, uintptr_t addr) {
     auto& memory_node = memory_nodes_[client_id];
 
     // // Using block bits as page offset bits.
-    auto page_offset_bits = (uint32_t) std::log2(memory_node[0].block_size());
-    uint32_t node_selection_bits = bits_to_represent(memory_nodes_.size());
+    auto block_offset_bits = (uint32_t) std::log2(memory_node[0].block_size());
+    auto set_offset_bits = (uint32_t) std::log2(memory_node[0].sets());
 
-    auto node_selection = static_cast<uint32_t>((addr >> page_offset_bits) & Cache::mask(node_selection_bits));
+    auto node_selection = static_cast<uint32_t>(addr >> (set_offset_bits + block_offset_bits)) & bit_mask_n_bits_right(std::log2(num_clusters));
     auto& slice = memory_node[node_selection % memory_node.size()];
 
     return slice.access(Cache::compute_location_info(addr, slice.block_size(), slice.sets(), slice.tag_bits()), addr);
