@@ -80,7 +80,7 @@ bool InterNodePartitioning::access(uint32_t client_id, uintptr_t addr) {
     auto block_offset_bits = (uint32_t) std::log2(memory_node[0].block_size());
     auto set_offset_bits = (uint32_t) std::log2(memory_node[0].sets());
 
-    auto node_selection = static_cast<uint32_t>(addr >> (set_offset_bits + block_offset_bits)) & bit_mask_n_bits_right(std::log2(num_clusters));
+    auto node_selection = static_cast<uint32_t>(addr >> (set_offset_bits + block_offset_bits)) & bit_mask_n_bits_right((uint32_t) std::log2(num_clusters));
     auto& slice = memory_node[node_selection % memory_node.size()];
 
     return slice.access(Cache::compute_location_info(addr, slice.block_size(), slice.sets(), slice.tag_bits()), addr);
