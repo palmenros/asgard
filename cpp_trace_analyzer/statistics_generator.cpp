@@ -580,23 +580,25 @@ void access_uniformity_way_vs_inter_intra(const std::string& trace_name) {
         }
     });
 
-    std::cout << "Cache slice sizes: " << sizes << std::endl;
+    std::cout << "{\n";
+
+    std::cout << "'cache_slice_sizes': " << sizes << ',' << std::endl;
 
     auto way_partitioned_misses = getMisses(way_partitioned_caches);
-    std::cout << "Way Partition Misses: " << way_partitioned_misses << std::endl;
+    std::cout << "'way_partition_misses': " << way_partitioned_misses<< ',' << std::endl;
 
     auto intra_node_misses = getMisses(inter_intra_node_caches);
-    std::cout << "Inter-Intra Node Misses: " << intra_node_misses << std::endl;
+    std::cout << "'inter_intra_node_misses': " << intra_node_misses << ',' << std::endl;
 
     auto way_partitioned_accesses = getClusterWayPartitionedNumAccesses(way_partitioned_caches);
-    std::cout << "Way Partition Accesses: " << way_partitioned_accesses << std::endl;
+    std::cout << "'way_partition_accesses': " << way_partitioned_accesses << ',' << std::endl;
 
     auto intra_node_accesses = getInterIntraNumAccesses(inter_intra_node_caches, num_clusters);
-    std::cout << "Inter-Intra Node Accesses: " << intra_node_accesses << std::endl;
+    std::cout << "'inter_intra_node_accesses': " << intra_node_accesses << ',' << std::endl;
 
+    std::cout << "'total_analyzed': " << num_accesses << ',' << std::endl;
 
-    std::cout << "Analyzed " << num_accesses << " accesses" << std::endl;
-
+    std::cout << "}" << std::endl;
 }
 
 void separate_trace_file_per_core() {
@@ -638,8 +640,8 @@ void generate_stats() {
 
 //    multiple_private_cache_sizes(trace_name);
 //    multiple_private_cache_assocs(trace_name);
-    intra_vs_way_partitioning(trace_name);
+//    intra_vs_way_partitioning(trace_name);
 //    inter_vs_cluster_way_partitioning_vs_inter_intra(trace_name);
 
-//    access_uniformity_way_vs_inter_intra(trace_name);
+    access_uniformity_way_vs_inter_intra(trace_name);
 }
