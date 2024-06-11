@@ -43,8 +43,8 @@ def inter_vs_cluster_way_partitioning_vs_inter_intra(num_clusters_owned_by_clien
     length = len(d['cache_slice_sizes'])
 
     # Can be controlled in orther
-    first_idx = 1
-    last_idx = length
+    first_idx = 0
+    last_idx = length-1
 
     cache_sizes_numeric = d['cache_slice_sizes'][first_idx:last_idx]
     cache_sizes_readable = list(map(lambda x: format_bytes(x), cache_sizes_numeric))
@@ -69,7 +69,7 @@ def inter_vs_cluster_way_partitioning_vs_inter_intra(num_clusters_owned_by_clien
         plt.plot(cache_sizes_numeric, way_partition_miss_rate, marker='o', label='Way Partitioning')
         plt.plot(cache_sizes_numeric, inter_intra_miss_rate, marker='o', label='Inter-Intra Node Partitioning')
 
-        plt.title(f'LLC miss rate in GAP PageRank')
+        # plt.title(f'LLC miss rate in GAP PageRank')
 
         plt.xlabel('LLC Slice Size')
         plt.ylabel('Miss Rate')
@@ -77,7 +77,7 @@ def inter_vs_cluster_way_partitioning_vs_inter_intra(num_clusters_owned_by_clien
         plt.legend(prop={'size': 11})
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig(f'img/miss_rate_{num_clusters_owned_by_client}_clusters.svg', format='svg', dpi=1200)
+        plt.savefig(f'img/miss_rate_{num_clusters_owned_by_client}_clusters.pdf', format='pdf', dpi=1200)
         plt.show()
 
     plot_miss_rate()
@@ -119,15 +119,15 @@ def intra_vs_way_partitioning():
 
         plt.plot(cache_sizes_numeric, intra_miss_rate, marker='o', label='Intra Node Partitioning')
 
-        plt.title(f'LLC miss rate in GAP PageRank')
+        # plt.title(f'LLC miss rate in GAP PageRank')
 
-        plt.xlabel('LLC Size')
+        plt.xlabel('Total LLC Size')
         plt.ylabel('Miss Rate')
         plt.xticks(cache_sizes_numeric, cache_sizes_readable, rotation=45, ha='right')
         plt.legend(prop={'size': 11})
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig(f'img/intra_vs_way_partitioning.svg', format='svg', dpi=1200)
+        plt.savefig(f'img/intra_vs_way_partitioning.pdf', format='pdf', dpi=1200)
         plt.show()
 
     plot_miss_rate()
@@ -178,6 +178,6 @@ def uniformity_way_vs_inter_intra():
     plt.show()
 
 
-inter_vs_cluster_way_partitioning_vs_inter_intra(1)
-# intra_vs_way_partitioning()
+# inter_vs_cluster_way_partitioning_vs_inter_intra(1)
+intra_vs_way_partitioning()
 # uniformity_way_vs_inter_intra()
